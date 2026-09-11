@@ -25,7 +25,7 @@ const MaterialsRegistry = () => {
   // ✅ FIXED: පරණ api/inventory වෙනුවට නිවැරදි /api/materials GET End-point එක දමා ඇත
   const fetchMaterials = async () => {
     try {
-      const res = await axios.get('http://192.168.1.19:5000/api/materials');
+      const res = await axios.get('http://192.168.1.2:5000/api/materials');
       setMaterials(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
       console.error("Failed to fetch materials from server:", err);
@@ -46,7 +46,7 @@ const MaterialsRegistry = () => {
 
     setLoading(true);
     try {
-      await axios.post('http://192.168.1.19:5000/api/materials', {
+      await axios.post('http://192.168.1.2:5000/api/materials', {
         code: formData.code.trim().toUpperCase(),
         itemName: formData.name.trim(),
         description: formData.description.trim(),

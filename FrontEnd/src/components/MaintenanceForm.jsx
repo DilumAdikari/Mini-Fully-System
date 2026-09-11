@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import { X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { createRequest } from '../api/api';
@@ -7,16 +8,35 @@ import { useApp } from '../context/AppContext';
 const MaintenanceForm = ({ isOpen, onClose, onRefresh }) => {
   const { user } = useApp();
   const [loading, setLoading] = useState(false);
+  const [departments, setDepartments] = useState([]);
   
-  // ✅ IMPORTANT: Default values must match the 'enum' in Request.js exactly
   const [formData, setFormData] = useState({
     title: '',
     type: 'Repair',
-    priority: 'Medium',
+    unit: 'Elisha', // Elisha or Usha
+    department: '',
+    date: new Date().toISOString().split('T')[0], // Default අද දිනය (YYYY-MM-DD)
     description: ''
   });
 
   const systemColor = "#A47148";
+
+  // Database එකෙන් Departments list එක ලබා ගැනීම
+  useEffect(() => {
+    if (isOpen) {
+      axios.get('http://192.168.1.2:5000/api/departments')
+        .then(res => {
+          const deps = res.data || [];
+          setDepartments(deps);
+          if (deps.length > 0) {
+            setFormData(prev => ({ ...prev, department: deps[0].name }));
+          }
+        })
+        .catch(err => {
+          console.error("Departments fetch failed:", err);
+        });
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -27,16 +47,19 @@ const MaintenanceForm = ({ isOpen, onClose, onRefresh }) => {
     const t = toast.loading('Syncing with database...');
     
     try {
-      // ✅ VALIDATION: Ensure user is logged in to provide required fields
       if (!user) {
         throw new Error("You must be logged in to submit a request.");
+      }
+
+      if (!formData.department) {
+        throw new Error("Please select a department.");
       }
 
       const payload = {
         ...formData,
         requestedBy: user.name || user.username || "System User",
         userId: user.uid || user.id || "N/A",
-        status: 'Assign Pending' // Force initial state
+        status: 'Assign Pending'
       };
 
       await createRequest(payload);
@@ -58,14 +81,19 @@ const MaintenanceForm = ({ isOpen, onClose, onRefresh }) => {
       });
 
       // Clear form after success
-      setFormData({ title: '', type: 'Repair', priority: 'Medium', description: '' });
+      setFormData({
+        title: '',
+        type: 'Repair',
+        unit: 'Elisha',
+        department: departments[0]?.name || '',
+        date: new Date().toISOString().split('T')[0],
+        description: ''
+      });
       onRefresh(); 
       onClose();   
     } catch (err) {
-      // ✅ LOGGING: Check the console to see exactly why the backend said "400"
       const serverMsg = err.response?.data?.error || err.message;
       console.error("Submission Error Details:", serverMsg);
-      
       toast.error(`Failed: ${serverMsg}`, { id: t });
     } finally {
       setLoading(false);
@@ -83,25 +111,25 @@ const MaintenanceForm = ({ isOpen, onClose, onRefresh }) => {
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-5">
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {/* ISSUE TITLE */}
           <div>
-            <label className="block text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2">Issue Title</label>
+            <label className="block text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1.5">Issue Title</label>
             <input 
               required
-              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:outline-none focus:border-[#A47148] transition-all"
+              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:outline-none focus:border-[#A47148] transition-all"
               placeholder="e.g. AC Leaking in Room 204"
               value={formData.title}
               onChange={(e) => setFormData({...formData, title: e.target.value})}
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            {/* JOB TYPE - MATCHES Request.js enum */}
+          {/* JOB TYPE & DATE */}
+          <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2">Job Type</label>
+              <label className="block text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1.5">Job Type</label>
               <select 
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm outline-none cursor-pointer focus:border-[#A47148] transition-all"
+                className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm outline-none cursor-pointer focus:border-[#A47148] transition-all"
                 value={formData.type}
                 onChange={(e) => setFormData({...formData, type: e.target.value})}
               >
@@ -116,47 +144,79 @@ const MaintenanceForm = ({ isOpen, onClose, onRefresh }) => {
               </select>
             </div>
 
-            {/* PRIORITY - MATCHES Request.js enum */}
             <div>
-              <label className="block text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2">Priority</label>
+              <label className="block text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1.5">Date</label>
+              <input 
+                type="date"
+                required
+                className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm outline-none focus:border-[#A47148] transition-all"
+                value={formData.date}
+                onChange={(e) => setFormData({...formData, date: e.target.value})}
+              />
+            </div>
+          </div>
+
+          {/* UNIT (ELISHA / USHA) & DEPARTMENT (FROM DB) */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1.5">Factory / Unit</label>
               <select 
-                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm outline-none cursor-pointer focus:border-[#A47148] transition-all"
-                value={formData.priority}
-                onChange={(e) => setFormData({...formData, priority: e.target.value})}
+                className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm outline-none cursor-pointer focus:border-[#A47148] transition-all"
+                value={formData.unit}
+                onChange={(e) => setFormData({...formData, unit: e.target.value})}
               >
-                <option value="Low">Low</option>
-                <option value="Medium">Medium</option>
-                <option value="High">High</option>
-                <option value="Critical">Critical</option>
+                <option value="Elisha">Elisha</option>
+                <option value="Usha">Usha</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1.5">Department</label>
+              <select 
+                required
+                className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm outline-none cursor-pointer uppercase focus:border-[#A47148] transition-all"
+                value={formData.department}
+                onChange={(e) => setFormData({...formData, department: e.target.value})}
+              >
+                {departments.length === 0 ? (
+                  <option value="" disabled>Loading...</option>
+                ) : (
+                  departments.map((dept) => (
+                    <option key={dept._id} value={dept.name}>
+                      {dept.name}
+                    </option>
+                  ))
+                )}
               </select>
             </div>
           </div>
 
           {/* DESCRIPTION */}
           <div>
-            <label className="block text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2">Detailed Description</label>
+            <label className="block text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1.5">Detailed Description</label>
             <textarea 
-              rows="4"
+              rows="3"
               required
-              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:outline-none focus:border-[#A47148] transition-all"
+              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:outline-none focus:border-[#A47148] transition-all resize-none"
               placeholder="Describe the issue in detail..."
               value={formData.description}
               onChange={(e) => setFormData({...formData, description: e.target.value})}
             ></textarea>
           </div>
 
+          {/* ACTIONS */}
           <div className="flex gap-3 pt-2">
             <button 
               type="button" 
               onClick={onClose}
-              className="flex-1 py-4 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-600 transition-colors"
+              className="flex-1 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-600 transition-colors"
             >
               Cancel
             </button>
             <button 
-              type="submit"
+              type="submit" 
               disabled={loading}
-              className="flex-[2] py-4 rounded-2xl text-white text-[10px] font-black uppercase tracking-widest shadow-lg shadow-slate-200 active:scale-95 transition-all disabled:opacity-50"
+              className="flex-[2] py-3.5 rounded-2xl text-white text-[10px] font-black uppercase tracking-widest shadow-lg shadow-slate-200 active:scale-95 transition-all disabled:opacity-50"
               style={{ backgroundColor: systemColor }}
             >
               {loading ? "Saving..." : "Submit Request"}
