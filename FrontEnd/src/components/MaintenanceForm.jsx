@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { X } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { createRequest } from '../api/api';
 import { useApp } from '../context/AppContext';
 
 const MaintenanceForm = ({ isOpen, onClose, onRefresh }) => {
@@ -13,15 +12,14 @@ const MaintenanceForm = ({ isOpen, onClose, onRefresh }) => {
   const [formData, setFormData] = useState({
     title: '',
     type: 'Repair',
-    unit: 'Elisha', // Elisha or Usha
+    unit: 'Elisha',
     department: '',
-    date: new Date().toISOString().split('T')[0], // Default අද දිනය (YYYY-MM-DD)
+    date: new Date().toISOString().split('T')[0],
     description: ''
   });
 
   const systemColor = "#A47148";
 
-  // Database එකෙන් Departments list එක ලබා ගැනීම
   useEffect(() => {
     if (isOpen) {
       axios.get('http://192.168.1.2:5000/api/departments')
@@ -32,9 +30,7 @@ const MaintenanceForm = ({ isOpen, onClose, onRefresh }) => {
             setFormData(prev => ({ ...prev, department: deps[0].name }));
           }
         })
-        .catch(err => {
-          console.error("Departments fetch failed:", err);
-        });
+        .catch(err => console.error("Departments fetch failed:", err));
     }
   }, [isOpen]);
 
@@ -43,44 +39,31 @@ const MaintenanceForm = ({ isOpen, onClose, onRefresh }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    
     const t = toast.loading('Syncing with database...');
     
     try {
-      if (!user) {
-        throw new Error("You must be logged in to submit a request.");
-      }
-
       if (!formData.department) {
         throw new Error("Please select a department.");
       }
 
+      // Payload එකට unit, department, date කෙලින්ම යවනවා (Priority සම්පූර්ණයෙන්ම අයින් කර ඇත)
       const payload = {
-        ...formData,
-        requestedBy: user.name || user.username || "System User",
-        userId: user.uid || user.id || "N/A",
+        title: formData.title,
+        type: formData.type,
+        unit: formData.unit,
+        department: formData.department,
+        date: formData.date,
+        description: formData.description,
+        requestedBy: user?.name || user?.username || "admin",
+        userId: user?.uid || user?._id || "system",
         status: 'Assign Pending'
       };
 
-      await createRequest(payload);
-      
-      toast.success('Request Submitted Successfully!', {
-        id: t,
-        style: {
-          borderRadius: '16px',
-          background: '#FFFFFF',
-          color: '#334155',
-          fontSize: '13px',
-          fontWeight: 'bold',
-          border: '1px solid #f1f5f9'
-        },
-        iconTheme: {
-          primary: systemColor,
-          secondary: '#fff',
-        },
-      });
+      console.log("🚀 Payload sending to server:", payload);
 
-      // Clear form after success
+      await axios.post('http://192.168.1.2:5000/api/requests', payload);
+      
+      toast.success('Request Submitted Successfully!', { id: t });
       setFormData({
         title: '',
         type: 'Repair',
@@ -89,11 +72,10 @@ const MaintenanceForm = ({ isOpen, onClose, onRefresh }) => {
         date: new Date().toISOString().split('T')[0],
         description: ''
       });
-      onRefresh(); 
+      if (onRefresh) onRefresh(); 
       onClose();   
     } catch (err) {
-      const serverMsg = err.response?.data?.error || err.message;
-      console.error("Submission Error Details:", serverMsg);
+      const serverMsg = err.response?.data?.message || err.message;
       toast.error(`Failed: ${serverMsg}`, { id: t });
     } finally {
       setLoading(false);
@@ -102,7 +84,7 @@ const MaintenanceForm = ({ isOpen, onClose, onRefresh }) => {
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
-      <div className="bg-white w-full max-w-md rounded-[32px] shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+      <div className="bg-white w-full max-w-md rounded-[32px] shadow-2xl overflow-hidden">
         
         <div className="flex items-center justify-between p-6 border-b border-slate-100">
           <h2 className="text-lg font-black text-slate-800 uppercase tracking-tight">New Maintenance Request</h2>
@@ -112,24 +94,22 @@ const MaintenanceForm = ({ isOpen, onClose, onRefresh }) => {
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          {/* ISSUE TITLE */}
           <div>
             <label className="block text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1.5">Issue Title</label>
             <input 
               required
-              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:outline-none focus:border-[#A47148] transition-all"
+              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:outline-none focus:border-[#A47148]"
               placeholder="e.g. AC Leaking in Room 204"
               value={formData.title}
               onChange={(e) => setFormData({...formData, title: e.target.value})}
             />
           </div>
 
-          {/* JOB TYPE & DATE */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1.5">Job Type</label>
               <select 
-                className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm outline-none cursor-pointer focus:border-[#A47148] transition-all"
+                className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm outline-none cursor-pointer focus:border-[#A47148]"
                 value={formData.type}
                 onChange={(e) => setFormData({...formData, type: e.target.value})}
               >
@@ -149,19 +129,18 @@ const MaintenanceForm = ({ isOpen, onClose, onRefresh }) => {
               <input 
                 type="date"
                 required
-                className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm outline-none focus:border-[#A47148] transition-all"
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-2xl text-sm outline-none focus:border-[#A47148]"
                 value={formData.date}
                 onChange={(e) => setFormData({...formData, date: e.target.value})}
               />
             </div>
           </div>
 
-          {/* UNIT (ELISHA / USHA) & DEPARTMENT (FROM DB) */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1.5">Factory / Unit</label>
               <select 
-                className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm outline-none cursor-pointer focus:border-[#A47148] transition-all"
+                className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm outline-none cursor-pointer focus:border-[#A47148]"
                 value={formData.unit}
                 onChange={(e) => setFormData({...formData, unit: e.target.value})}
               >
@@ -174,7 +153,7 @@ const MaintenanceForm = ({ isOpen, onClose, onRefresh }) => {
               <label className="block text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1.5">Department</label>
               <select 
                 required
-                className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm outline-none cursor-pointer uppercase focus:border-[#A47148] transition-all"
+                className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm outline-none cursor-pointer uppercase focus:border-[#A47148]"
                 value={formData.department}
                 onChange={(e) => setFormData({...formData, department: e.target.value})}
               >
@@ -191,32 +170,30 @@ const MaintenanceForm = ({ isOpen, onClose, onRefresh }) => {
             </div>
           </div>
 
-          {/* DESCRIPTION */}
           <div>
             <label className="block text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1.5">Detailed Description</label>
             <textarea 
               rows="3"
               required
-              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:outline-none focus:border-[#A47148] transition-all resize-none"
+              className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:outline-none focus:border-[#A47148] resize-none"
               placeholder="Describe the issue in detail..."
               value={formData.description}
               onChange={(e) => setFormData({...formData, description: e.target.value})}
             ></textarea>
           </div>
 
-          {/* ACTIONS */}
           <div className="flex gap-3 pt-2">
             <button 
               type="button" 
               onClick={onClose}
-              className="flex-1 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-600 transition-colors"
+              className="flex-1 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-600"
             >
               Cancel
             </button>
             <button 
               type="submit" 
               disabled={loading}
-              className="flex-[2] py-3.5 rounded-2xl text-white text-[10px] font-black uppercase tracking-widest shadow-lg shadow-slate-200 active:scale-95 transition-all disabled:opacity-50"
+              className="flex-[2] py-3.5 rounded-2xl text-white text-[10px] font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all disabled:opacity-50"
               style={{ backgroundColor: systemColor }}
             >
               {loading ? "Saving..." : "Submit Request"}
