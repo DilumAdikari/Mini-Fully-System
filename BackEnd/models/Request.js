@@ -3,10 +3,10 @@ const mongoose = require('mongoose');
 /**
  * Request Schema
  * Defines the structure for Maintenance Job Tickets.
- * Status Flow: Assign Pending -> Assigned -> On Approval -> Completed
+ * Status Flow: Assign Pending -> Assigned -> Completed
  */
 const RequestSchema = new mongoose.Schema({
-  // Unique Ticket ID (e.g., TID000001) generated in server.js
+  // Unique Ticket ID (e.g., TID000001)
   tid: { 
     type: String, 
     required: true, 
@@ -29,20 +29,35 @@ const RequestSchema = new mongoose.Schema({
       'Emergency', 
       'Plumbing', 
       'Electrical', 
-      'Furniture',
+      'Furniture', 
       'Network'
     ], 
     default: 'Repair' 
   },
-  priority: { 
+
+  // 💡 අලුතින් එකතු කළ Factory / Unit (Elisha or Usha)
+  unit: { 
     type: String, 
-    enum: ['Low', 'Medium', 'High', 'Critical'], 
-    default: 'Medium' 
+    enum: ['Elisha', 'Usha'], 
+    default: 'Elisha' 
   },
+
+  // 💡 අලුතින් එකතු කළ Department එක (DB එකෙන් තෝරන එක)
+  department: { 
+    type: String, 
+    required: true 
+  },
+
+  // 💡 Form එකෙන් තෝරන Date එක
+  date: { 
+    type: Date, 
+    default: Date.now 
+  },
+
   // The core workflow status
   status: { 
     type: String, 
-    enum: ['Assign Pending', 'Assigned', 'On Approval', 'Completed'], 
+    enum: ['Assign Pending', 'Assigned', 'Completed'], 
     default: 'Assign Pending' 
   },
   
@@ -59,11 +74,9 @@ const RequestSchema = new mongoose.Schema({
   }, 
 
   // Timestamps
+  completedAt: { type: Date, default: null },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 });
-
-// ✅ WE HAVE REMOVED THE MIDDLEWARE (pre-save hook) TO PREVENT THE "next" ERROR.
-// Dates are now managed directly in the server.js routes.
 
 module.exports = mongoose.model('Request', RequestSchema);

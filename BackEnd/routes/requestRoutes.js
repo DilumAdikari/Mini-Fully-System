@@ -3,7 +3,7 @@ const router = express.Router();
 const Request = require('../models/Request');
 
 // 1. GET ALL REQUESTS
-// Accessible at: GET http://localhost:5000/api/requests
+// Accessible at: GET http://192.168.1.2:5000/api/requests
 router.get('/', async (req, res) => {
     try {
         const { role, uid } = req.query;
@@ -21,7 +21,7 @@ router.get('/', async (req, res) => {
 });
 
 // 2. CREATE A NEW REQUEST
-// Accessible at: POST http://localhost:5000/api/requests
+// Accessible at: POST http://192.168.1.2:5000/api/requests
 router.post('/', async (req, res) => {
     try {
         const { title, description, type, priority, requesterId } = req.body;
@@ -44,7 +44,7 @@ router.post('/', async (req, res) => {
 });
 
 // 3. UPDATE REQUEST STATUS (Assign, Start, Complete)
-// Accessible at: PATCH http://localhost:5000/api/requests/:id
+// Accessible at: PATCH http://192.168.1.2:5000/api/requests/:id
 router.patch('/:id', async (req, res) => {
     try {
         const { id } = req.params;

@@ -125,7 +125,7 @@ const ToolAllocation = ({ inventoryItems = [], staffList = [], onRefresh }) => {
           quantity: Number(item.qty) 
         };
         
-        return axios.patch('http://localhost:5000/api/grn/allocate', payload);
+        return axios.patch('http://192.168.1.2:5000/api/grn/allocate', payload);
       });
 
       await Promise.all(allocationPromises);

@@ -12,10 +12,8 @@ const Material = require('./models/Material');
 const StaffInventory = require('./models/StaffInventory'); 
 const Notification = require('./models/Notification'); 
 const Supplier = require('./models/Supplier'); 
-// WORKFLOW ENGINE MODEL
 const WorkflowTemplate = require('./models/WorkflowTemplate'); 
 
-// 💡 FIXED: app Variable සින්ටැක්ස් එක නිවැරදි කරන ලදී
 const app = express();
 
 // --- MIDDLEWARE ---
@@ -24,12 +22,10 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // --- DATABASE CONNECTION & AUTOMATIC INDEX RESET LOGIC ---
-// 💡 FIXED: සර්වර් එක ඔන් වෙද්දී දත්ත මකා දමන dropCollection ලොජික් එක සම්පූර්ණයෙන්ම ඉවත් කරන ලදී
-mongoose.connect('mongodb://localhost:27017/mms_db')
+mongoose.connect('mongodb://192.168.1.2:27017/mms_db')
   .then(() => {
     console.log('✅ Connected to MongoDB securely (mms_db)');
     
-    // Core database safe initializations (Indexes පමණක් ආරක්ෂිතව සින්ක් කරයි)
     if (mongoose.connection.models['Inventory']) {
       mongoose.connection.models['Inventory'].syncIndexes()
         .then(() => console.log('🔄 Inventory Database Indexes Synced Successfully.'))
@@ -42,7 +38,6 @@ mongoose.connect('mongodb://localhost:27017/mms_db')
         .catch(() => {});
     }
 
-    // Trigger Admin Auto-seed rotation without top-level await
     seedDefaultAdmin();
   })
   .catch(err => console.error('❌ Connection error:', err));
@@ -71,8 +66,6 @@ const seedDefaultAdmin = async () => {
 };
 
 // --- HELPERS ---
-
-// Helper for TID (TID000001)
 const generateNextTID = async () => {
   try {
     const lastRequest = await Request.findOne({ tid: { $regex: /^TID/ } }, { tid: 1 }).sort({ tid: -1 });
@@ -84,7 +77,6 @@ const generateNextTID = async () => {
   }
 };
 
-// Helper for GRN ID (GRN000001)
 const generateNextGRNID = async () => {
   try {
     const lastGRN = await ToolGRN.findOne({}, { grnId: 1, invoiceCode: 1 }).sort({ _id: -1 }); 
@@ -116,7 +108,6 @@ const generateNextInvoiceCode = async () => {
   }
 };
 
-// Helper for Supplier ID (SPL000001)
 const generateNextSupplierID = async () => {
   try {
     const lastSupplier = await Supplier.findOne({}, { supplierId: 1 }).sort({ _id: -1 });
@@ -258,6 +249,7 @@ app.post('/api/requests', async (req, res) => {
   }
 });
 
+// Admin විසින් Staff කෙනෙක්ව assign කිරීම
 app.patch('/api/requests/assign/:id', async (req, res) => {
   try {
     const { staffId, staffName } = req.body;
@@ -286,59 +278,38 @@ app.patch('/api/requests/assign/:id', async (req, res) => {
   }
 });
 
-app.patch('/api/requests/complete/:id', async (req, res) => {
+// 💡 ADMIN ONLY COMPLETE ROUTE:
+// Staff member submit කරන route එක ඉවත් කර, Admin ට පමණක් Job එක Complete කිරීමට මෙම Route එක සකස් කර ඇත.
+app.patch('/api/requests/admin-complete/:id', async (req, res) => {
   try {
     const updated = await Request.findByIdAndUpdate(
       req.params.id,
-      { status: 'Under Review', updatedAt: new Date() },
+      { 
+        status: 'Completed', 
+        completedAt: new Date(),
+        updatedAt: new Date() 
+      },
       { new: true }
     );
 
-    const adminUser = await User.findOne({ userType: 'Admin' });
-    if (adminUser) {
+    if (!updated) {
+      return res.status(404).json({ message: "Maintenance Job not found" });
+    }
+
+    // Assign කර සිටි Staff member ට notify කිරීම
+    if (updated.assignedToId) {
       const newNotif = new Notification({
-        userId: adminUser._id,
-        message: `Maintenance Job ${updated.tid} has been completed by ${updated.assignedTo}. Needs your Review & Approval.`,
+        userId: updated.assignedToId,
+        message: `Maintenance Job ${updated.tid} has been marked as COMPLETED by Admin.`,
         type: 'COMPLETED',
         requestId: updated._id
       });
       await newNotif.save();
     }
 
-    res.json(updated);
+    res.json({ message: "Job successfully marked as Completed by Admin", data: updated });
   } catch (err) {
-    res.status(400).json({ message: "Failed to mark as complete", error: err.message });
-  }
-});
-
-app.patch('/api/requests/review/:id', async (req, res) => {
-  try {
-    const { action } = req.body; 
-    const finalStatus = action === 'APPROVE' ? 'Approved' : 'Assigned'; 
-
-    const updated = await Request.findByIdAndUpdate(
-      req.params.id,
-      { status: finalStatus, updatedAt: new Date() },
-      { new: true }
-    );
-
-    if (updated.assignedToId) {
-      const msg = action === 'APPROVE' 
-        ? `Congratulations! Admin APPROVED your work on Job: ${updated.tid}.` 
-        : `Attention Required! Admin REJECTED your work on Job: ${updated.tid}. Please redo and complete it properly.`;
-
-      const newNotif = new Notification({
-        userId: updated.assignedToId,
-        message: msg,
-        type: action === 'APPROVE' ? 'APPROVED' : 'REJECTED',
-        requestId: updated._id
-      });
-      await newNotif.save();
-    }
-
-    res.json(updated);
-  } catch (err) {
-    res.status(400).json({ message: "Review process failed", error: err.message });
+    res.status(400).json({ message: "Failed to mark job as completed", error: err.message });
   }
 });
 
@@ -398,7 +369,6 @@ app.get('/api/inventory', async (req, res) => {
   }
 });
 
-// 💡 DYNAMIC WORKFLOW CONFIGURATION INTEGRATED GRN POST ROUTE
 app.post('/api/grn', async (req, res) => {
   try {
     const incomingCode = req.body.invoiceCode || await generateNextInvoiceCode();
@@ -472,12 +442,10 @@ app.post('/api/grn', async (req, res) => {
   }
 });
 
-// 💡 FIXED METHOD: QUANTITY DEDUCTION MATRIX COMPILABLE
 app.patch('/api/grn/allocate', async (req, res) => {
   try {
     const { grnObjectId, itemObjectId, staffName, staffId, itemName, quantity } = req.body;
     const targetItemName = itemName || req.body.itemName;
-
     const allocQty = quantity ? Number(quantity) : 1;
 
     const inventoryItem = await Inventory.findOneAndUpdate(
@@ -516,7 +484,6 @@ app.patch('/api/grn/allocate', async (req, res) => {
   }
 });
 
-// 💡 FIXED & VALIDATED WORKFLOW METHOD: BULK MULTI-ITEM ALLOCATION PIPELINE
 app.post('/api/grn/allocate-bulk', async (req, res) => {
   try {
     const { allocationDocNo, staffId, staffName, allocatedItems } = req.body;
@@ -525,7 +492,6 @@ app.post('/api/grn/allocate-bulk', async (req, res) => {
       return res.status(400).json({ message: "Allocation item list basket is empty" });
     }
 
-    // --- 🔍 FIRST PASS: VALIDATE ALL ITEM STOCK QUANTITIES ---
     for (const item of allocatedItems) {
       const dbItem = await Inventory.findOne({ grnId: item.grnInvoiceCode, code: item.materialCode });
       
@@ -540,7 +506,6 @@ app.post('/api/grn/allocate-bulk', async (req, res) => {
       }
     }
 
-    // --- 💾 SECOND PASS: EXECUTE ALLOCATION PIPELINE IF VALIDATION PASSES ---
     const operations = allocatedItems.map(async (item) => {
       await Inventory.findOneAndUpdate(
         { grnId: item.grnInvoiceCode, code: item.materialCode },
@@ -684,7 +649,6 @@ app.get('/api/departments', async (req, res) => {
 
 app.post('/api/departments', async (req, res) => {
   try {
-    console.log("📥 Incoming Request Body:", req.body);
     let departmentName = null;
 
     if (req.body && req.body.name) {
@@ -774,7 +738,7 @@ app.delete('/api/workflow/templates/:id', async (req, res) => {
   }
 });
 
-// 💡 APPROVER REVIEW & AUTHORIZATION ENGINE
+// --- APPROVER REVIEW & AUTHORIZATION ENGINE ---
 app.patch('/api/grn/review/:id', async (req, res) => {
   try {
     const grnId = req.params.id;
@@ -816,7 +780,7 @@ app.patch('/api/grn/review/:id', async (req, res) => {
           const nextNotif = new Notification({
             userId: nextApprover.user,
             message: `GRN ${grn.invoiceCode} requires your Level-${currentLevel + 1} Authorization.`,
-            type: 'COMPLETED',
+            type: 'COMPLETED', 
             createdAt: new Date()
           });
           await nextNotif.save();
@@ -857,5 +821,5 @@ app.patch('/api/grn/review/:id', async (req, res) => {
 // --- START SERVER ---
 const PORT = 5000;
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 MMS Backend running at http://localhost:${PORT}`);
+  console.log(`🚀 MMS Backend running at http://192.168.1.2:${PORT}`);
 });

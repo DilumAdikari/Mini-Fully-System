@@ -90,14 +90,14 @@ const UserManagement = () => {
 
   const fetchUsers = async () => {
     try {
-      const res = await axios.get('http://192.168.1.19:5000/api/users');
+      const res = await axios.get('http://192.168.1.2:5000/api/users');
       setUsers(res.data || []);
     } catch (err) { console.error("Error fetching users", err); }
   };
 
   const fetchDepartments = async () => {
     try {
-      const res = await axios.get('http://192.168.1.19:5000/api/departments');
+      const res = await axios.get('http://192.168.1.2:5000/api/departments');
       setDepartments(res.data || []);
     } catch (err) { console.error("Error fetching departments", err); }
   };
@@ -186,11 +186,11 @@ const UserManagement = () => {
     try {
       if (selectedUserId) {
         // 💡 UPDATE MECHANISM: දැනට ඉන්න යූසර්ගේ බලතල PATCH Route එකට යවයි
-        await axios.patch(`http://192.168.1.19:5000/api/users/update-permissions/${selectedUserId}`, payload);
+        await axios.patch(`http://192.168.1.2:5000/api/users/update-permissions/${selectedUserId}`, payload);
         toast.success("User Security Access Clearance matrix updated successfully", { id: t });
       } else {
         // CREATE MECHANISM: අලුත්ම යූසර් කෙනෙක් සාදයි
-        await axios.post('http://192.168.1.19:5000/api/users/register', payload);
+        await axios.post('http://192.168.1.2:5000/api/users/register', payload);
         toast.success("Staff Account & Access Matrix Created Successfully", { id: t });
       }
       
@@ -205,7 +205,7 @@ const UserManagement = () => {
 
   const executeDelete = async () => {
     try {
-      await axios.delete(`http://192.168.1.19:5000/api/users/${modalData.id}`);
+      await axios.delete(`http://192.168.1.2:5000/api/users/${modalData.id}`);
       toast.success("User deleted successfully");
       if (selectedUserId === modalData.id) handleClearFormSelection();
       fetchUsers();

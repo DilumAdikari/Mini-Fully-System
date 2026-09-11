@@ -59,9 +59,9 @@ const MainAppContent = () => {
     if (!user || user.role !== 'admin') return;
     try {
       const [grnRes, staffRes, depRes] = await Promise.all([
-        axios.get('http://192.168.1.19:5000/api/grn'),
-        axios.get('http://192.168.1.19:5000/api/users/staff'),
-        axios.get('http://192.168.1.19:5000/api/departments') 
+        axios.get('http://192.168.1.2:5000/api/grn'),
+        axios.get('http://192.168.1.2:5000/api/users/staff'),
+        axios.get('http://192.168.1.2:5000/api/departments') 
       ]);
       
       setGrns(grnRes.data || []);
@@ -76,7 +76,7 @@ const MainAppContent = () => {
   const loadNotifications = async () => {
     if (!user || !user.uid) return;
     try {
-      const res = await axios.get(`http://192.168.1.19:5000/api/notifications/${user.uid}`);
+      const res = await axios.get(`http://192.168.1.2:5000/api/notifications/${user.uid}`);
       setNotifications(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
       console.error("Failed to load notifications:", err);
@@ -86,7 +86,7 @@ const MainAppContent = () => {
   // 🔔 4. Mark Single Notification as Read
   const handleMarkAsRead = async (id) => {
     try {
-      await axios.patch(`http://192.168.1.19:5000/api/notifications/read/${id}`);
+      await axios.patch(`http://192.168.1.2:5000/api/notifications/read/${id}`);
       setNotifications(prev => prev.map(n => n._id === id ? { ...n, isRead: true } : n));
       toast.success("Notification marked as read");
     } catch (err) {
@@ -100,7 +100,7 @@ const MainAppContent = () => {
     if (unreadNotifs.length === 0) return;
 
     try {
-      await Promise.all(unreadNotifs.map(n => axios.patch(`http://192.168.1.19:5000/api/notifications/read/${n._id}`)));
+      await Promise.all(unreadNotifs.map(n => axios.patch(`http://192.168.1.2:5000/api/notifications/read/${n._id}`)));
       setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
       toast.success("All notifications marked as read");
     } catch (err) {

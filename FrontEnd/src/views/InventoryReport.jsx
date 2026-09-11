@@ -42,7 +42,7 @@ const InventoryReport = () => {
 
   const fetchStaffList = async () => {
     try {
-      const res = await axios.get('http://192.168.1.19:5000/api/users/staff');
+      const res = await axios.get('http://192.168.1.2:5000/api/users/staff');
       setStaffList(res.data || []);
     } catch (err) {
       console.error("Fetch staff list error:", err);
@@ -52,7 +52,7 @@ const InventoryReport = () => {
   const fetchStaffInventory = async (staffId) => {
     try {
       setLoading(true);
-      const res = await axios.get(`http://192.168.1.19:5000/api/staff-inventory/${staffId}`);
+      const res = await axios.get(`http://192.168.1.2:5000/api/staff-inventory/${staffId}`);
       setStaffAssets(res.data || []);
     } catch (err) {
       console.error("Fetch staff inventory error:", err);
