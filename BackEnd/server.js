@@ -232,24 +232,37 @@ app.get('/api/requests', async (req, res) => {
   }
 });
 
+// Create Maintenance Request (Explicit Mapping for unit, department, date)
 app.post('/api/requests', async (req, res) => {
   try {
+    console.log("📥 Incoming Request Payload:", req.body);
+
     const nextTid = await generateNextTID();
     const newJob = new Request({ 
-      ...req.body, 
       tid: nextTid,
+      title: req.body.title,
+      description: req.body.description,
+      type: req.body.type || 'Repair',
+      unit: req.body.unit || 'Elisha',
+      department: req.body.department,
+      date: req.body.date ? new Date(req.body.date) : new Date(),
+      requestedBy: req.body.requestedBy || 'System User',
+      userId: req.body.userId || 'N/A',
       status: 'Assign Pending',
       createdAt: new Date(),
       updatedAt: new Date()
     });
+
     const savedJob = await newJob.save();
+    console.log("✅ Successfully Saved Job to DB:", savedJob);
     res.status(201).json(savedJob);
   } catch (err) {
+    console.error("❌ Save Request Error:", err.message);
     res.status(400).json({ message: "Could not save job", error: err.message });
   }
 });
 
-// Admin විසින් Staff කෙනෙක්ව assign කිරීම
+// Admin assigns Staff
 app.patch('/api/requests/assign/:id', async (req, res) => {
   try {
     const { staffId, staffName } = req.body;
@@ -266,7 +279,7 @@ app.patch('/api/requests/assign/:id', async (req, res) => {
 
     const newNotif = new Notification({
       userId: staffId,
-      message: `You have been assigned to a new Maintenance Job: ${updated.tid} - ${updated.description || 'No Description'}`,
+      message: `You have been assigned to a new Maintenance Job: ${updated.tid} - ${updated.title || updated.description || 'No Description'}`,
       type: 'ASSIGNED',
       requestId: updated._id
     });
@@ -278,8 +291,7 @@ app.patch('/api/requests/assign/:id', async (req, res) => {
   }
 });
 
-// 💡 ADMIN ONLY COMPLETE ROUTE:
-// Staff member submit කරන route එක ඉවත් කර, Admin ට පමණක් Job එක Complete කිරීමට මෙම Route එක සකස් කර ඇත.
+// Admin Only Complete Job
 app.patch('/api/requests/admin-complete/:id', async (req, res) => {
   try {
     const updated = await Request.findByIdAndUpdate(
@@ -296,7 +308,6 @@ app.patch('/api/requests/admin-complete/:id', async (req, res) => {
       return res.status(404).json({ message: "Maintenance Job not found" });
     }
 
-    // Assign කර සිටි Staff member ට notify කිරීම
     if (updated.assignedToId) {
       const newNotif = new Notification({
         userId: updated.assignedToId,
@@ -562,7 +573,7 @@ app.get('/api/staff-inventory/:staffId', async (req, res) => {
   }
 });
 
-// --- MATERIALS REGISTRY ROUTES (GET & POST) ---
+// --- MATERIALS REGISTRY ROUTES ---
 app.get('/api/materials', async (req, res) => {
   try {
     const materials = await Material.find({}).sort({ createdAt: -1 });
@@ -637,7 +648,6 @@ app.delete('/api/suppliers/:id', async (req, res) => {
 });
 
 // --- DEPARTMENT MANAGEMENT ---
-
 app.get('/api/departments', async (req, res) => {
   try {
     const deps = await Department.find().sort({ name: 1 });
