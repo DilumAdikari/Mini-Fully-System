@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
 import { useApp } from '../context/AppContext';
-import { X, UserCheck, FileText, CheckCircle2 } from 'lucide-react';
+import { X, UserCheck, FileText, CheckCircle2, Search, RotateCcw } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 // --- INTERNAL COMPONENT: JOB DETAILS & ASSIGN / COMPLETE MODAL ---
@@ -59,6 +59,17 @@ const JobDetailsModal = ({ isOpen, onClose, job, staffList, onAssign, onAdminCom
               </div>
             </div>
 
+            <div className="grid grid-cols-2 gap-3">
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg">
+                <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Unit / Factory</label>
+                <p className="text-xs font-semibold text-slate-800 uppercase">{job.unit || 'Elisha'}</p>
+              </div>
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg">
+                <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Department</label>
+                <p className="text-xs font-semibold text-slate-800 uppercase">{job.department || '---'}</p>
+              </div>
+            </div>
+
             <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg">
               <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Assigned Staff</label>
               <p className="text-xs font-semibold text-slate-800 uppercase">{job.assignedTo || 'Unassigned'}</p>
@@ -91,7 +102,7 @@ const JobDetailsModal = ({ isOpen, onClose, job, staffList, onAssign, onAdminCom
             {userRole === 'admin' && job.status === 'Assigned' && (
               <button 
                 onClick={() => onAdminComplete(job._id)}
-                className="w-full py-2.5 bg-emerald-600 text-white rounded-md text-xs font-bold uppercase tracking-wider hover:bg-emerald-700 transition-all flex items-center justify-center gap-2"
+                className="w-full py-2.5 bg-emerald-600 text-white rounded-md text-xs font-bold uppercase tracking-wider hover:bg-emerald-700 transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
                 <CheckCircle2 size={15} /> Complete Maintenance Job
               </button>
@@ -113,16 +124,23 @@ const JobDetailsModal = ({ isOpen, onClose, job, staffList, onAssign, onAdminCom
   );
 };
 
-// --- MAIN VIEW COMPONENT ---
+// --- MAIN VIEW COMPONENT WITH FILTER CONTROLS ---
 const MaintenanceView = ({ requests = [], onRefresh }) => {
   const { user } = useApp();
   const [staffList, setStaffList] = useState([]);
   const [selectedJob, setSelectedJob] = useState(null);
 
+  // 🔍 Filter States
+  const [searchTicket, setSearchTicket] = useState('');
+  const [statusFilter, setStatusFilter] = useState('ALL');
+  const [staffFilter, setStaffFilter] = useState('ALL');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+
   useEffect(() => {
     if (user?.role === 'admin') {
       axios.get('http://192.168.1.2:5000/api/users/staff')
-        .then(res => setStaffList(res.data))
+        .then(res => setStaffList(res.data || []))
         .catch(err => console.error("Error loading staff", err));
     }
   }, [user]);
@@ -147,7 +165,6 @@ const MaintenanceView = ({ requests = [], onRefresh }) => {
     }
   };
 
-  // 💡 ADMIN ONLY COMPLETE CALL
   const handleAdminComplete = async (id) => {
     try {
       await axios.patch(`http://192.168.1.2:5000/api/requests/admin-complete/${id}`);
@@ -159,16 +176,149 @@ const MaintenanceView = ({ requests = [], onRefresh }) => {
     }
   };
 
+  // Reset Filters
+  const handleResetFilters = () => {
+    setSearchTicket('');
+    setStatusFilter('ALL');
+    setStaffFilter('ALL');
+    setStartDate('');
+    setEndDate('');
+  };
+
+  // ⚡ Filtering Operations
+  const filteredRequests = useMemo(() => {
+    return requests.filter((req) => {
+      // 1. Ticket ID Search (or Description)
+      if (searchTicket.trim()) {
+        const query = searchTicket.toLowerCase().trim();
+        const matchesTid = req.tid?.toLowerCase().includes(query);
+        const matchesDesc = (req.title || req.description || '')?.toLowerCase().includes(query);
+        if (!matchesTid && !matchesDesc) return false;
+      }
+
+      // 2. Status Filtering
+      if (statusFilter !== 'ALL') {
+        if (statusFilter === 'DRAFT' && req.status !== 'Assign Pending' && req.status !== 'DRAFT') {
+          return false;
+        } else if (statusFilter !== 'DRAFT' && req.status !== statusFilter) {
+          return false;
+        }
+      }
+
+      // 3. Maintenance Staff Filtering
+      if (staffFilter !== 'ALL') {
+        if (!req.assignedTo || req.assignedTo.toLowerCase() !== staffFilter.toLowerCase()) {
+          return false;
+        }
+      }
+
+      // 4. Date Range Filtering (From - To)
+      if (startDate || endDate) {
+        const reqDateStr = req.date || req.createdAt;
+        if (!reqDateStr) return false;
+        const itemDate = new Date(reqDateStr).toISOString().split('T')[0];
+
+        if (startDate && itemDate < startDate) return false;
+        if (endDate && itemDate > endDate) return false;
+      }
+
+      return true;
+    });
+  }, [requests, searchTicket, statusFilter, staffFilter, startDate, endDate]);
+
   return (
     <div className="p-4 animate-in fade-in duration-300 font-sans antialiased text-slate-700 tracking-normal bg-white">
-      <div className="mb-5 flex justify-between items-end px-1 border-b border-slate-200 pb-3">
+      {/* Title Bar */}
+      <div className="mb-4 flex justify-between items-end px-1 border-b border-slate-200 pb-3">
         <div>
           <h1 className="text-lg font-bold text-slate-900 uppercase tracking-tight">Maintenance Jobs</h1>
           <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-0.5">Operational Task Tracking</p>
         </div>
-        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Total Records: {requests.length}</p>
+        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+          Records: {filteredRequests.length} of {requests.length}
+        </p>
       </div>
 
+      {/* 🔍 FILTER TOOLBAR */}
+      <div className="bg-slate-50 border border-slate-200 p-3 mb-4 rounded-lg flex flex-wrap items-center gap-3">
+        
+        {/* Ticket ID Search */}
+        <div className="relative flex-1 min-w-[180px]">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input
+            type="text"
+            placeholder="Search Ticket ID (e.g. TID000001)..."
+            value={searchTicket}
+            onChange={(e) => setSearchTicket(e.target.value)}
+            className="w-full pl-9 pr-3 py-1.5 bg-white border border-slate-200 rounded text-xs text-slate-800 placeholder-slate-400 outline-none focus:border-slate-400 transition-all uppercase font-medium"
+          />
+        </div>
+
+        {/* Status Filter */}
+        <div className="w-[140px]">
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded text-xs text-slate-700 outline-none focus:border-slate-400 uppercase font-medium cursor-pointer"
+          >
+            <option value="ALL">All Statuses</option>
+            <option value="DRAFT">Draft / Pending</option>
+            <option value="Assigned">Assigned</option>
+            <option value="Completed">Completed</option>
+          </select>
+        </div>
+
+        {/* Maintenance Staff Filter */}
+        <div className="w-[160px]">
+          <select
+            value={staffFilter}
+            onChange={(e) => setStaffFilter(e.target.value)}
+            className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded text-xs text-slate-700 outline-none focus:border-slate-400 uppercase font-medium cursor-pointer"
+          >
+            <option value="ALL">All Staff Members</option>
+            {staffList.map((s) => (
+              <option key={s._id} value={s.username}>
+                {s.username}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Date From */}
+        <div className="flex items-center gap-1.5 bg-white px-2 py-1 border border-slate-200 rounded">
+          <span className="text-[10px] font-bold text-slate-400 uppercase">From</span>
+          <input
+            type="date"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            className="text-xs text-slate-700 outline-none bg-transparent cursor-pointer"
+          />
+        </div>
+
+        {/* Date To */}
+        <div className="flex items-center gap-1.5 bg-white px-2 py-1 border border-slate-200 rounded">
+          <span className="text-[10px] font-bold text-slate-400 uppercase">To</span>
+          <input
+            type="date"
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+            className="text-xs text-slate-700 outline-none bg-transparent cursor-pointer"
+          />
+        </div>
+
+        {/* Reset Button */}
+        {(searchTicket || statusFilter !== 'ALL' || staffFilter !== 'ALL' || startDate || endDate) && (
+          <button
+            onClick={handleResetFilters}
+            className="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded text-xs font-bold uppercase tracking-wider transition-colors flex items-center gap-1 cursor-pointer"
+            title="Reset All Filters"
+          >
+            <RotateCcw size={12} /> Reset
+          </button>
+        )}
+      </div>
+
+      {/* Table Registry Container */}
       <div className="bg-white border border-slate-200 overflow-hidden shadow-none rounded-none">
         <table className="w-full text-left border-collapse">
           <thead>
@@ -182,28 +332,36 @@ const MaintenanceView = ({ requests = [], onRefresh }) => {
             </tr>
           </thead>
           <tbody className="text-[11px] font-normal tracking-normal">
-            {requests.map((req) => {
-              const style = rowStyles[req.status] || rowStyles.default;
-              return (
-                <tr 
-                  key={req._id} 
-                  style={{ backgroundColor: style.bg, color: style.text }}
-                  className="border-b border-slate-200 transition-all hover:brightness-98 cursor-pointer"
-                  onClick={() => setSelectedJob(req)}
-                >
-                  <td className="px-4 py-2 font-semibold border-r border-slate-200/60 font-mono tracking-wide">{req.tid}</td>
-                  <td className="px-4 py-2 font-semibold uppercase border-r border-slate-200/60">{req.title || req.description}</td>
-                  <td className="px-4 py-2 font-semibold uppercase border-r border-slate-200/60">{req.assignedTo || '---'}</td>
-                  <td className="px-4 py-2 border-r border-slate-200/60 font-mono text-slate-600">
-                    {req.date ? new Date(req.date).toISOString().split('T')[0] : 'Date Not Set'}
-                  </td>
-                  <td className="px-4 py-2 font-bold uppercase border-r border-slate-200/60">{req.status === 'Assign Pending' ? 'DRAFT' : req.status}</td>
-                  <td className="px-4 py-2 text-center font-bold text-[9px] uppercase tracking-wider opacity-60 text-slate-700 underline">
-                    View Details
-                  </td>
-                </tr>
-              );
-            })}
+            {filteredRequests.length === 0 ? (
+              <tr>
+                <td colSpan="6" className="py-8 text-center text-slate-400 font-semibold uppercase tracking-wider text-xs">
+                  No matching tickets found
+                </td>
+              </tr>
+            ) : (
+              filteredRequests.map((req) => {
+                const style = rowStyles[req.status] || rowStyles.default;
+                return (
+                  <tr 
+                    key={req._id} 
+                    style={{ backgroundColor: style.bg, color: style.text }}
+                    className="border-b border-slate-200 transition-all hover:brightness-98 cursor-pointer"
+                    onClick={() => setSelectedJob(req)}
+                  >
+                    <td className="px-4 py-2 font-semibold border-r border-slate-200/60 font-mono tracking-wide">{req.tid}</td>
+                    <td className="px-4 py-2 font-semibold uppercase border-r border-slate-200/60">{req.title || req.description}</td>
+                    <td className="px-4 py-2 font-semibold uppercase border-r border-slate-200/60">{req.assignedTo || '---'}</td>
+                    <td className="px-4 py-2 border-r border-slate-200/60 font-mono text-slate-600">
+                      {req.date ? new Date(req.date).toISOString().split('T')[0] : 'Date Not Set'}
+                    </td>
+                    <td className="px-4 py-2 font-bold uppercase border-r border-slate-200/60">{req.status === 'Assign Pending' ? 'DRAFT' : req.status}</td>
+                    <td className="px-4 py-2 text-center font-bold text-[9px] uppercase tracking-wider opacity-60 text-slate-700 underline">
+                      View Details
+                    </td>
+                  </tr>
+                );
+              })
+            )}
           </tbody>
         </table>
       </div>
