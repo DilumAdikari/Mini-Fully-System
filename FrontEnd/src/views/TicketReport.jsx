@@ -10,10 +10,9 @@ const TicketReport = () => {
   // Filters
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [staffFilter, setStaffFilter] = useState('ALL');
+  const [unitFilter, setUnitFilter] = useState('ALL'); // 💡 Factory/Unit filter state
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-
-  const printRef = useRef();
 
   // Data Fetching
   useEffect(() => {
@@ -53,7 +52,15 @@ const TicketReport = () => {
         }
       }
 
-      // 3. Date Range Filter
+      // 3. Factory / Unit Filter
+      if (unitFilter !== 'ALL') {
+        const itemUnit = item.unit || 'Elisha';
+        if (itemUnit.toLowerCase() !== unitFilter.toLowerCase()) {
+          return false;
+        }
+      }
+
+      // 4. Date Range Filter
       if (startDate || endDate) {
         const dateVal = item.date || item.createdAt;
         if (!dateVal) return false;
@@ -65,12 +72,13 @@ const TicketReport = () => {
 
       return true;
     });
-  }, [requests, statusFilter, staffFilter, startDate, endDate]);
+  }, [requests, statusFilter, staffFilter, unitFilter, startDate, endDate]);
 
   // Reset Filters
   const handleReset = () => {
     setStatusFilter('ALL');
     setStaffFilter('ALL');
+    setUnitFilter('ALL');
     setStartDate('');
     setEndDate('');
   };
@@ -80,19 +88,21 @@ const TicketReport = () => {
     window.print();
   };
 
-  // CSV Export
+  // CSV Export with Unit & Department
   const handleExportCSV = () => {
     if (filteredData.length === 0) return;
 
-    const headers = ["ID,DESCRIPTION,ASSIGNED TO,DATE,STATUS"];
+    const headers = ["ID,DESCRIPTION,UNIT,DEPARTMENT,ASSIGNED TO,DATE,STATUS"];
     const rows = filteredData.map(item => {
       const id = item.tid || '';
       const desc = `"${(item.title || item.description || '').replace(/"/g, '""')}"`;
+      const unit = `"${item.unit || 'Elisha'}"`;
+      const dept = `"${item.department || 'N/A'}"`;
       const assigned = `"${item.assignedTo || 'Unassigned'}"`;
       const date = item.date ? new Date(item.date).toISOString().split('T')[0] : 'N/A';
       const status = item.status === 'Assign Pending' ? 'DRAFT' : item.status;
 
-      return [id, desc, assigned, date, status].join(',');
+      return [id, desc, unit, dept, assigned, date, status].join(',');
     });
 
     const csvContent = "data:text/csv;charset=utf-8," + [headers, ...rows].join("\n");
@@ -119,33 +129,33 @@ const TicketReport = () => {
           </p>
         </div>
 
-        {/* Print / Export Actions (Hidden on Print) */}
+        {/* Print / Export Actions */}
         <div className="flex gap-2 print:hidden">
           <button
             onClick={handleExportCSV}
-            className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold uppercase rounded-lg border border-slate-200 transition-colors flex items-center gap-1.5"
+            className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold uppercase rounded-lg border border-slate-200 transition-colors flex items-center gap-1.5 cursor-pointer"
           >
             <Download size={14} /> Export CSV
           </button>
           <button
             onClick={handlePrint}
-            className="px-4 py-2 bg-[#A06C3E] hover:bg-[#8A5A30] text-white text-xs font-bold uppercase rounded-lg shadow-sm transition-all flex items-center gap-1.5"
+            className="px-4 py-2 bg-[#A06C3E] hover:bg-[#8A5A30] text-white text-xs font-bold uppercase rounded-lg shadow-sm transition-all flex items-center gap-1.5 cursor-pointer"
           >
             <Printer size={14} /> Print Report
           </button>
         </div>
       </div>
 
-      {/* Filter Control Bar (Hidden on Print) */}
+      {/* Filter Control Bar */}
       <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl mb-6 flex flex-wrap items-center gap-3 print:hidden">
         
-        {/* Status */}
-        <div className="min-w-[140px]">
+        {/* Status Filter */}
+        <div className="min-w-[130px]">
           <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">Status</label>
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="w-full px-3 py-1.5 bg-white border border-slate-300 rounded-md text-xs font-medium uppercase outline-none focus:border-slate-500"
+            className="w-full px-3 py-1.5 bg-white border border-slate-300 rounded-md text-xs font-medium uppercase outline-none focus:border-slate-500 cursor-pointer"
           >
             <option value="ALL">All Statuses</option>
             <option value="DRAFT">Draft / Pending</option>
@@ -154,13 +164,27 @@ const TicketReport = () => {
           </select>
         </div>
 
-        {/* Assigned Staff */}
-        <div className="min-w-[170px]">
+        {/* Factory / Unit Filter */}
+        <div className="min-w-[130px]">
+          <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">Factory / Unit</label>
+          <select
+            value={unitFilter}
+            onChange={(e) => setUnitFilter(e.target.value)}
+            className="w-full px-3 py-1.5 bg-white border border-slate-300 rounded-md text-xs font-medium uppercase outline-none focus:border-slate-500 cursor-pointer"
+          >
+            <option value="ALL">All Units</option>
+            <option value="Elisha">Elisha</option>
+            <option value="Usha">Usha</option>
+          </select>
+        </div>
+
+        {/* Assigned Staff Filter */}
+        <div className="min-w-[160px]">
           <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">Assigned Staff</label>
           <select
             value={staffFilter}
             onChange={(e) => setStaffFilter(e.target.value)}
-            className="w-full px-3 py-1.5 bg-white border border-slate-300 rounded-md text-xs font-medium uppercase outline-none focus:border-slate-500"
+            className="w-full px-3 py-1.5 bg-white border border-slate-300 rounded-md text-xs font-medium uppercase outline-none focus:border-slate-500 cursor-pointer"
           >
             <option value="ALL">All Maintenance Staff</option>
             {staffList.map((s) => (
@@ -178,7 +202,7 @@ const TicketReport = () => {
             type="date"
             value={startDate}
             onChange={(e) => setStartDate(e.target.value)}
-            className="px-3 py-1.5 bg-white border border-slate-300 rounded-md text-xs font-medium outline-none focus:border-slate-500"
+            className="px-3 py-1.5 bg-white border border-slate-300 rounded-md text-xs font-medium outline-none focus:border-slate-500 cursor-pointer"
           />
         </div>
 
@@ -189,16 +213,16 @@ const TicketReport = () => {
             type="date"
             value={endDate}
             onChange={(e) => setEndDate(e.target.value)}
-            className="px-3 py-1.5 bg-white border border-slate-300 rounded-md text-xs font-medium outline-none focus:border-slate-500"
+            className="px-3 py-1.5 bg-white border border-slate-300 rounded-md text-xs font-medium outline-none focus:border-slate-500 cursor-pointer"
           />
         </div>
 
         {/* Reset Filter Button */}
-        {(statusFilter !== 'ALL' || staffFilter !== 'ALL' || startDate || endDate) && (
+        {(statusFilter !== 'ALL' || staffFilter !== 'ALL' || unitFilter !== 'ALL' || startDate || endDate) && (
           <div className="self-end">
             <button
               onClick={handleReset}
-              className="px-3 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-md text-xs font-bold uppercase transition-colors flex items-center gap-1"
+              className="px-3 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-md text-xs font-bold uppercase transition-colors flex items-center gap-1 cursor-pointer"
             >
               <RotateCcw size={12} /> Reset
             </button>
@@ -211,7 +235,7 @@ const TicketReport = () => {
         </div>
       </div>
 
-      {/* Print Meta Header (Visible ONLY when Printing) */}
+      {/* Print Meta Header */}
       <div className="hidden print:block mb-4 border-b border-slate-300 pb-2">
         <div className="flex justify-between text-xs text-slate-600 font-semibold uppercase">
           <span>Generated On: {new Date().toLocaleString()}</span>
@@ -224,23 +248,25 @@ const TicketReport = () => {
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-slate-100 border-b border-slate-300 text-slate-700">
-              <th className="px-4 py-2.5 text-[11px] font-bold uppercase border-r border-slate-300 w-[120px]">ID</th>
+              <th className="px-4 py-2.5 text-[11px] font-bold uppercase border-r border-slate-300 w-[110px]">ID</th>
               <th className="px-4 py-2.5 text-[11px] font-bold uppercase border-r border-slate-300">DESCRIPTION</th>
-              <th className="px-4 py-2.5 text-[11px] font-bold uppercase border-r border-slate-300 w-[180px]">ASSIGNED TO</th>
-              <th className="px-4 py-2.5 text-[11px] font-bold uppercase border-r border-slate-300 w-[120px]">DATE</th>
-              <th className="px-4 py-2.5 text-[11px] font-bold uppercase w-[130px] text-center">STATUS</th>
+              <th className="px-4 py-2.5 text-[11px] font-bold uppercase border-r border-slate-300 w-[110px]">UNIT</th>
+              <th className="px-4 py-2.5 text-[11px] font-bold uppercase border-r border-slate-300 w-[140px]">DEPARTMENT</th>
+              <th className="px-4 py-2.5 text-[11px] font-bold uppercase border-r border-slate-300 w-[160px]">ASSIGNED TO</th>
+              <th className="px-4 py-2.5 text-[11px] font-bold uppercase border-r border-slate-300 w-[110px]">DATE</th>
+              <th className="px-4 py-2.5 text-[11px] font-bold uppercase w-[120px] text-center">STATUS</th>
             </tr>
           </thead>
           <tbody className="text-xs divide-y divide-slate-200">
             {loading ? (
               <tr>
-                <td colSpan="5" className="py-10 text-center text-slate-400 uppercase font-semibold">
+                <td colSpan="7" className="py-10 text-center text-slate-400 uppercase font-semibold">
                   Generating Ticket Data...
                 </td>
               </tr>
             ) : filteredData.length === 0 ? (
               <tr>
-                <td colSpan="5" className="py-10 text-center text-slate-400 uppercase font-semibold">
+                <td colSpan="7" className="py-10 text-center text-slate-400 uppercase font-semibold">
                   No tickets matched the specified criteria
                 </td>
               </tr>
@@ -256,6 +282,12 @@ const TicketReport = () => {
                     </td>
                     <td className="px-4 py-2.5 uppercase font-medium text-slate-800 border-r border-slate-200">
                       {item.title || item.description || 'N/A'}
+                    </td>
+                    <td className="px-4 py-2.5 uppercase font-semibold text-slate-700 border-r border-slate-200">
+                      {item.unit || 'Elisha'}
+                    </td>
+                    <td className="px-4 py-2.5 uppercase font-semibold text-slate-700 border-r border-slate-200">
+                      {item.department || '---'}
                     </td>
                     <td className="px-4 py-2.5 uppercase font-semibold text-slate-700 border-r border-slate-200">
                       {item.assignedTo || 'Unassigned'}
