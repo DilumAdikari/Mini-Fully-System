@@ -36,7 +36,7 @@ const JobDetailsModal = ({ isOpen, onClose, job, staffList, onAssign, onAdminCom
                 <p className="text-xs font-mono text-blue-600 font-semibold mt-0.5">{job.tid}</p>
               </div>
             </div>
-            <button onClick={onClose} className="p-1.5 hover:bg-slate-100 rounded-md transition-colors border border-slate-200">
+            <button onClick={onClose} className="p-1.5 hover:bg-slate-100 rounded-md transition-colors border border-slate-200 cursor-pointer">
               <X size={15} className="text-slate-500" />
             </button>
           </div>
@@ -83,7 +83,7 @@ const JobDetailsModal = ({ isOpen, onClose, job, staffList, onAssign, onAdminCom
                 <UserCheck size={14} /> Assign Maintenance Member
               </label>
               <select
-                className="w-full px-3 py-2 bg-white border border-slate-300 text-slate-800 text-xs font-medium rounded-md outline-none focus:border-slate-500 transition-all uppercase font-sans"
+                className="w-full px-3 py-2 bg-white border border-slate-300 text-slate-800 text-xs font-medium rounded-md outline-none focus:border-slate-500 transition-all uppercase font-sans cursor-pointer"
                 defaultValue=""
                 onChange={(e) => {
                   if (e.target.value) onAssign(job._id, e.target.value);
@@ -188,12 +188,13 @@ const MaintenanceView = ({ requests = [], onRefresh }) => {
   // ⚡ Filtering Operations
   const filteredRequests = useMemo(() => {
     return requests.filter((req) => {
-      // 1. Ticket ID Search (or Description)
+      // 1. Ticket ID Search (or Description or Department)
       if (searchTicket.trim()) {
         const query = searchTicket.toLowerCase().trim();
         const matchesTid = req.tid?.toLowerCase().includes(query);
         const matchesDesc = (req.title || req.description || '')?.toLowerCase().includes(query);
-        if (!matchesTid && !matchesDesc) return false;
+        const matchesDept = req.department?.toLowerCase().includes(query);
+        if (!matchesTid && !matchesDesc && !matchesDept) return false;
       }
 
       // 2. Status Filtering
@@ -325,6 +326,7 @@ const MaintenanceView = ({ requests = [], onRefresh }) => {
             <tr className="bg-slate-50 border-b border-slate-200 text-slate-700">
               <th className="px-4 py-2.5 text-[10px] font-bold uppercase border-r border-slate-200">ID</th>
               <th className="px-4 py-2.5 text-[10px] font-bold uppercase border-r border-slate-200">Description</th>
+              <th className="px-4 py-2.5 text-[10px] font-bold uppercase border-r border-slate-200">Department</th>
               <th className="px-4 py-2.5 text-[10px] font-bold uppercase border-r border-slate-200">Assigned To</th>
               <th className="px-4 py-2.5 text-[10px] font-bold uppercase border-r border-slate-200">Date</th>
               <th className="px-4 py-3 text-[10px] font-bold uppercase border-r border-slate-200">Status</th>
@@ -334,7 +336,7 @@ const MaintenanceView = ({ requests = [], onRefresh }) => {
           <tbody className="text-[11px] font-normal tracking-normal">
             {filteredRequests.length === 0 ? (
               <tr>
-                <td colSpan="6" className="py-8 text-center text-slate-400 font-semibold uppercase tracking-wider text-xs">
+                <td colSpan="7" className="py-8 text-center text-slate-400 font-semibold uppercase tracking-wider text-xs">
                   No matching tickets found
                 </td>
               </tr>
@@ -350,6 +352,7 @@ const MaintenanceView = ({ requests = [], onRefresh }) => {
                   >
                     <td className="px-4 py-2 font-semibold border-r border-slate-200/60 font-mono tracking-wide">{req.tid}</td>
                     <td className="px-4 py-2 font-semibold uppercase border-r border-slate-200/60">{req.title || req.description}</td>
+                    <td className="px-4 py-2 font-semibold uppercase border-r border-slate-200/60">{req.department || '---'}</td>
                     <td className="px-4 py-2 font-semibold uppercase border-r border-slate-200/60">{req.assignedTo || '---'}</td>
                     <td className="px-4 py-2 border-r border-slate-200/60 font-mono text-slate-600">
                       {req.date ? new Date(req.date).toISOString().split('T')[0] : 'Date Not Set'}
