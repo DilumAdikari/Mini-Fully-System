@@ -22,6 +22,7 @@ import InventoryManager from './views/InventoryManager';
 import ToolAllocation from './views/ToolAllocation';
 import GRNPage from './views/GRNPage';
 import InventoryReport from './views/InventoryReport';
+import TicketReport from './views/TicketReport'; // 📄 අලුතින් එක් කළ Ticket Report එක
 import SettingsView from './views/SettingsView'; 
 import MaterialsRegistry from './views/MaterialsRegistry';
 import SupplierRegister from './views/SupplierRegister';
@@ -337,9 +338,16 @@ const MainAppContent = () => {
               element={<GRNApprovalsView onRefresh={loadSystemData} />} 
             />
 
+            {/* Reports Routing */}
             <Route 
               path="/reports" 
               element={<InventoryReport grns={grns} />} 
+            />
+            
+            {/* 💡 Ticket Report Route එකතු කරන ලදී */}
+            <Route 
+              path="/ticket-reports" 
+              element={<TicketReport />} 
             />
 
             <Route path="/users" element={<UserManagement />} />
