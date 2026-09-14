@@ -15,14 +15,18 @@ import {
   Boxes,
   ChevronDown,
   Truck,
-  Layers // ✅ FIXED: Workflow Setup සඳහා Layers අයිකනය මෙහි තබා ගන්නා ලදී
+  Layers,
+  BarChart3,
+  Ticket
 } from 'lucide-react';
 
 const Sidebar = ({ user, logout, onAddNew }) => {
   const systemColor = "#A47148";
   const location = useLocation();
 
+  // Dropdown States
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isReportsOpen, setIsReportsOpen] = useState(false);
 
   // --- MAIN NAVIGATION LINKS CONFIGURATION ---
   const navItems = [
@@ -48,15 +52,15 @@ const Sidebar = ({ user, logout, onAddNew }) => {
       icon: UserCheck, 
       adminOnly: true 
     },
-    { 
-      id: 'reports', 
-      name: 'Inventory Report', 
-      icon: FileText,
-      allowedRoles: ['Admin', 'Maintenance Staff'] 
-    },
   ];
 
-  // 💡 FIXED: Settings Dropdown එක ඇතුළටම "Workflow Routing Setup" එක ලස්සනට සම්බන්ධ කරන ලදී
+  // 📊 REPORTS SUB-ITEMS
+  const reportSubItems = [
+    { id: 'reports', name: 'Inventory Report', icon: FileText },
+    { id: 'ticket-reports', name: 'Ticket Report', icon: Ticket },
+  ];
+
+  // ⚙️ SETTINGS SUB-ITEMS
   const settingsSubItems = [
     { id: 'workflow-setup', name: 'Workflow Setup', icon: Layers }, 
     { id: 'supplier-register', name: 'Supplier Registration', icon: Truck }, 
@@ -65,7 +69,8 @@ const Sidebar = ({ user, logout, onAddNew }) => {
     { id: 'settings', name: 'Department', icon: Settings },
   ];
 
-  const isSubItemActive = settingsSubItems.some(sub => location.pathname === `/${sub.id}`);
+  const isReportActive = reportSubItems.some(sub => location.pathname === `/${sub.id}`);
+  const isSettingsActive = settingsSubItems.some(sub => location.pathname === `/${sub.id}`);
 
   return (
     <>
@@ -166,22 +171,81 @@ const Sidebar = ({ user, logout, onAddNew }) => {
           })}
 
           {/* ================================================== */}
-          {/* Collapsible Dropdown System Accordion (Admin Only) */}
+          {/* 📊 Collapsible Reports Dropdown Accordion           */}
+          {/* ================================================== */}
+          <div className="space-y-1 block relative">
+            <button
+              onClick={() => setIsReportsOpen(!isReportsOpen)}
+              className={`w-full flex items-center h-12 rounded-xl transition-all relative overflow-hidden outline-none cursor-pointer ${
+                isReportActive ? 'bg-white/10 text-white' : 'text-white/60 hover:bg-white/5 hover:text-white'
+              }`}
+            >
+              <div className="w-[54px] min-w-[54px] flex items-center justify-center shrink-0">
+                <BarChart3 
+                  size={20} 
+                  strokeWidth={isReportActive ? 2 : 1.5}
+                  className={`transition-all duration-300 ${isReportActive ? 'text-white' : 'text-white/60'}`}
+                />
+              </div>
+              
+              <span className="font-medium text-[11px] tracking-wide ml-2 opacity-0 group-hover:opacity-100 transition-all duration-300 flex-1 text-left whitespace-nowrap">
+                Reports
+              </span>
+
+              <div className="pr-4 opacity-0 group-hover:opacity-100 transition-all duration-300">
+                <ChevronDown 
+                  size={14} 
+                  className={`transform transition-transform duration-200 ${isReportsOpen ? 'rotate-180' : 'rotate-0'}`} 
+                />
+              </div>
+            </button>
+
+            {/* Sub-items for Reports */}
+            <div 
+              className={`transition-all duration-300 ease-in-out overflow-hidden space-y-1 pl-4 ${
+                isReportsOpen ? 'max-h-40 opacity-100 mt-1' : 'max-h-0 opacity-0 pointer-events-none'
+              }`}
+            >
+              {reportSubItems.map((sub) => (
+                <NavLink
+                  key={sub.id}
+                  to={`/${sub.id}`}
+                  className={({ isActive }) => `
+                    w-full flex items-center h-10 rounded-lg transition-all relative overflow-hidden
+                    ${isActive ? 'bg-white/20 text-white' : 'text-white/60 hover:bg-white/5 hover:text-white'}
+                  `}
+                >
+                  {({ isActive }) => (
+                    <>
+                      <div className="w-10 min-w-10 flex items-center justify-center shrink-0">
+                        <sub.icon size={15} strokeWidth={isActive ? 2 : 1.5} />
+                      </div>
+                      <span className="font-medium text-[11px] tracking-wide ml-2 whitespace-nowrap transition-opacity duration-300">
+                        {sub.name}
+                      </span>
+                    </>
+                  )}
+                </NavLink>
+              ))}
+            </div>
+          </div>
+
+          {/* ================================================== */}
+          {/* ⚙️ Collapsible Settings Dropdown (Admin Only)       */}
           {/* ================================================== */}
           {user?.role === 'admin' && (
             <div className="space-y-1 block relative">
-              {/* Trigger Button */}
               <button
                 onClick={() => setIsSettingsOpen(!isSettingsOpen)}
-                className={`w-full flex items-center h-12 rounded-xl transition-all relative overflow-hidden outline-none ${
-                  isSubItemActive ? 'bg-white/10 text-white' : 'text-white/60 hover:bg-white/5 hover:text-white'
+                className={`w-full flex items-center h-12 rounded-xl transition-all relative overflow-hidden outline-none cursor-pointer ${
+                  isSettingsActive ? 'bg-white/10 text-white' : 'text-white/60 hover:bg-white/5 hover:text-white'
                 }`}
               >
                 <div className="w-[54px] min-w-[54px] flex items-center justify-center shrink-0">
                   <Settings 
                     size={20} 
-                    strokeWidth={isSubItemActive ? 2 : 1.5}
-                    className={`transition-all duration-300 ${isSubItemActive ? 'text-white' : 'text-white/60'}`}
+                    strokeWidth={isSettingsActive ? 2 : 1.5}
+                    className={`transition-all duration-300 ${isSettingsActive ? 'text-white' : 'text-white/60'}`}
                   />
                 </div>
                 
@@ -189,7 +253,6 @@ const Sidebar = ({ user, logout, onAddNew }) => {
                   Settings Menu
                 </span>
 
-                {/* Dropdown Arrow */}
                 <div className="pr-4 opacity-0 group-hover:opacity-100 transition-all duration-300">
                   <ChevronDown 
                     size={14} 
@@ -198,7 +261,7 @@ const Sidebar = ({ user, logout, onAddNew }) => {
                 </div>
               </button>
 
-              {/* Sub-items Grid Container (Smooth Slide Accordion) */}
+              {/* Sub-items for Settings */}
               <div 
                 className={`transition-all duration-300 ease-in-out overflow-hidden space-y-1 pl-4 ${
                   isSettingsOpen ? 'max-h-60 opacity-100 mt-1' : 'max-h-0 opacity-0 pointer-events-none'
@@ -235,7 +298,7 @@ const Sidebar = ({ user, logout, onAddNew }) => {
         <div className="p-3 border-t border-white/10 mb-2 shrink-0">
           <button 
             onClick={logout}
-            className="w-full flex items-center h-12 rounded-xl hover:bg-white/10 transition-all text-white/60 hover:text-white group/logout"
+            className="w-full flex items-center h-12 rounded-xl hover:bg-white/10 transition-all text-white/60 hover:text-white group/logout cursor-pointer"
           >
             <div className="w-[54px] min-w-[54px] flex items-center justify-center shrink-0">
               <LogOut size={18} strokeWidth={1.5} />
