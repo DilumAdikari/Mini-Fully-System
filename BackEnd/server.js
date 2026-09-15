@@ -54,7 +54,8 @@ const seedDefaultAdmin = async () => {
         username: 'admin',
         password: 'admin123', 
         userType: 'Admin',
-        department: 'Management' 
+        department: 'Management',
+        permissionMatrix: {} // Default Admin matrix
       });
 
       await defaultAdmin.save();
@@ -121,6 +122,7 @@ const generateNextSupplierID = async () => {
 
 // --- USER MANAGEMENT & AUTH ROUTES ---
 
+// 💡 FIXED: permissionMatrix එක frontend context එකට return කර ඇත
 app.post('/api/users/login', async (req, res) => {
   try {
     const { username, password } = req.body;
@@ -135,7 +137,8 @@ app.post('/api/users/login', async (req, res) => {
       role: user.userType === 'Admin' ? 'admin' : 'staff', 
       userType: user.userType, 
       uid: user._id,
-      department: user.department
+      department: user.department,
+      permissionMatrix: user.permissionMatrix || {} // Frontend එකට permissions යවයි
     });
   } catch (err) {
     res.status(500).json({ message: "Login server error" });
@@ -156,7 +159,7 @@ app.post('/api/users/register', async (req, res) => {
       permissionMatrix: permissionMatrix || {}
     });
     await newUser.save();
-    res.status(201).json({ message: "User registered successfully" });
+    res.status(201).json({ message: "User registered successfully", user: newUser });
   } catch (err) {
     res.status(500).json({ message: "Registration failed", error: err.message });
   }
@@ -174,6 +177,8 @@ app.get('/api/users', async (req, res) => {
 app.delete('/api/users/:id', async (req, res) => {
   try {
     const userToDelete = await User.findById(req.params.id);
+    if (!userToDelete) return res.status(404).json({ message: "User not found" });
+    
     if (userToDelete.username === 'admin') {
       return res.status(403).json({ message: "System admin cannot be deleted" });
     }
@@ -187,34 +192,41 @@ app.delete('/api/users/:id', async (req, res) => {
 
 app.get('/api/users/staff', async (req, res) => {
   try {
-    const staff = await User.find({ userType: 'Maintenance Staff' }, 'username _id text userType');
+    const staff = await User.find({ userType: 'Maintenance Staff' }, 'username _id text userType department');
     res.json(staff);
   } catch (err) {
     res.status(500).json({ message: "Error fetching staff" });
   }
 });
 
+// 💡 FIXED: Permission update route එක password ආරක්ෂිතව සහ updated object එක සමඟ return කරයි
 app.patch('/api/users/update-permissions/:id', async (req, res) => {
   try {
-    const { userType, department, permissionMatrix } = req.body;
+    const { userType, department, permissionMatrix, password } = req.body;
     
-    const updatedUser = await User.findByIdAndUpdate(
-      req.params.id,
-      { 
-        $set: { 
-          userType, 
-          department, 
-          permissionMatrix 
-        } 
-      },
-      { new: true }
-    );
+    const updateData = { 
+      userType, 
+      department, 
+      permissionMatrix: permissionMatrix || {}
+    };
 
-    if (!updatedUser) {
-      return res.status(404).json({ message: "User profile context not discovered" });
+    // Password අලුතින් එවා ඇත්නම් පමණක් එයද update කරන්න
+    if (password && password.trim() !== '') {
+      updateData.password = password;
     }
 
-    res.json({ message: "User security matrix clearance tokens updated successfully!" });
+    const updatedUser = await User.findByIdAndUpdate(
+      req.params.id,
+      { $set: updateData },
+      { new: true }
+    ).select('-password');
+
+    if (!updatedUser) {
+      return res.status(404).json({ message: "User profile not discovered" });
+    }
+
+    console.log(`✅ Permissions updated for: ${updatedUser.username}`);
+    res.json({ message: "User security matrix clearance tokens updated successfully!", user: updatedUser });
   } catch (err) {
     console.error("❌ Permission Matrix Update Error:", err);
     res.status(500).json({ message: "Failed to finalize encryption matrix update" });
@@ -232,7 +244,6 @@ app.get('/api/requests', async (req, res) => {
   }
 });
 
-// Create Maintenance Request (Explicit Mapping for unit, department, date)
 app.post('/api/requests', async (req, res) => {
   try {
     console.log("📥 Incoming Request Payload:", req.body);
@@ -262,7 +273,6 @@ app.post('/api/requests', async (req, res) => {
   }
 });
 
-// Admin assigns Staff
 app.patch('/api/requests/assign/:id', async (req, res) => {
   try {
     const { staffId, staffName } = req.body;
@@ -291,7 +301,6 @@ app.patch('/api/requests/assign/:id', async (req, res) => {
   }
 });
 
-// Admin Only Complete Job
 app.patch('/api/requests/admin-complete/:id', async (req, res) => {
   try {
     const updated = await Request.findByIdAndUpdate(

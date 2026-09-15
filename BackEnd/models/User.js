@@ -1,18 +1,35 @@
 const mongoose = require('mongoose');
 
 const UserSchema = new mongoose.Schema({
-  username: { type: String, required: true, unique: true },
-  password: { type: String, required: true }, 
+  username: { 
+    type: String, 
+    required: true, 
+    unique: true 
+  },
+  password: { 
+    type: String, 
+    required: true 
+  }, 
   userType: { 
     type: String, 
-    // Ensure these match exactly what you select in the frontend dropdown
     enum: ['Admin', 'Normal User', 'Maintenance Staff'], 
     default: 'Normal User' 
   },
-  department: { type: String, required: true },
-  createdAt: { type: Date, default: Date.now }
-});
+  department: { 
+    type: String, 
+    required: true 
+  },
+  
+  // 💡 Access Matrix Configuration field එක මෙතැනට එක් කරන ලදී
+  permissionMatrix: {
+    type: mongoose.Schema.Types.Mixed,
+    default: {}
+  },
 
-// ✅ NO MIDDLEWARE HERE - If the error persists, it is definitely coming from Request.js
+  createdAt: { 
+    type: Date, 
+    default: Date.now 
+  }
+});
 
 module.exports = mongoose.model('User', UserSchema);
