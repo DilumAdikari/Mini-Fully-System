@@ -1,29 +1,36 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 
 const AppContext = createContext();
 
-// Named Export: AppProvider
 export const AppProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
+  // 💡 1. App එක load වෙද්දීම localStorage එකෙන් user details සහ permissionMatrix එක කියවා ගනී
+  const [user, setUser] = useState(() => {
+    try {
+      const savedUser = localStorage.getItem('mms_user');
+      return savedUser ? JSON.parse(savedUser) : null;
+    } catch (e) {
+      console.error("Failed to parse user from localStorage", e);
+      return null;
+    }
+  });
 
-  // ✅ Add the login function
+  // 💡 2. Login වෙද්දී user state එකට මෙන්ම localStorage එකටත් permissionMatrix සමඟම save කරයි
   const login = (userData) => {
     setUser(userData);
-    // You can also add localStorage logic here later if you want to stay logged in on refresh
+    localStorage.setItem('mms_user', JSON.stringify(userData));
   };
 
-  // ✅ Update logout to clear state
+  // 💡 3. Logout වෙද්දී localStorage එකෙන් සම්පූර්ණයෙන්ම ඉවත් කරයි
   const logout = () => {
     setUser(null);
+    localStorage.removeItem('mms_user');
   };
 
   return (
-    // ✅ MUST include 'login' in the value object so LoginView can see it
     <AppContext.Provider value={{ user, login, logout }}>
       {children}
     </AppContext.Provider>
   );
 };
 
-// Named Export: useApp
 export const useApp = () => useContext(AppContext);
