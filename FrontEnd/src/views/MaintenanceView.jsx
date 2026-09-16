@@ -9,7 +9,6 @@ import toast from 'react-hot-toast';
 
 // --- INTERNAL COMPONENT: JOB DETAILS & ASSIGN / COMPLETE MODAL ---
 const JobDetailsModal = ({ isOpen, onClose, job, staffList, serviceProviders, onAssign, onAdminComplete, userRole }) => {
-  // 💡 Channel Toggle State: 'INTERNAL' or 'EXTERNAL'
   const [assignCategory, setAssignCategory] = useState('INTERNAL');
 
   if (!isOpen || !job) return null;
@@ -26,6 +25,12 @@ const JobDetailsModal = ({ isOpen, onClose, job, staffList, serviceProviders, on
 
   const currentStatus = job.status;
   const isDraft = currentStatus === 'Assign Pending' || currentStatus === 'DRAFT';
+
+  // 💡 Safe Check: Service Provider ද යන්න හඳුනාගැනීම (assignType හෝ නමේ ඇති bracket මඟින්)
+  const isExternalProvider = Boolean(
+    job.assignType === 'EXTERNAL' ||
+    (job.assignedTo && (job.assignedTo.includes('[') || job.assignedTo.includes('NIC:')))
+  );
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200 font-sans antialiased text-slate-800 tracking-normal">
@@ -77,6 +82,7 @@ const JobDetailsModal = ({ isOpen, onClose, job, staffList, serviceProviders, on
               </div>
             </div>
 
+            {/* 💡 Assigned Personnel Display (Dynamic Badge Fixed) */}
             <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between">
               <div>
                 <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Assigned Personnel</label>
@@ -84,17 +90,17 @@ const JobDetailsModal = ({ isOpen, onClose, job, staffList, serviceProviders, on
               </div>
               {job.assignedTo && (
                 <span className={`px-2.5 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider ${
-                  job.assignType === 'EXTERNAL' 
+                  isExternalProvider 
                     ? 'bg-amber-100 text-amber-800 border border-amber-300' 
                     : 'bg-blue-100 text-blue-800 border border-blue-300'
                 }`}>
-                  {job.assignType === 'EXTERNAL' ? 'Service Provider' : 'Maintenance Staff'}
+                  {isExternalProvider ? 'Service Provider' : 'Maintenance Staff'}
                 </span>
               )}
             </div>
           </div>
 
-          {/* 💡 Step 1: Admin Assign Panel with Category Selection */}
+          {/* Step 1: Admin Assign Panel with Category Selection */}
           {userRole === 'admin' && isDraft && (
             <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-3 mb-5">
               <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5 uppercase">
@@ -214,19 +220,16 @@ const MaintenanceView = ({ requests = [], onRefresh }) => {
   // 🔍 Filter States
   const [searchTicket, setSearchTicket] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
-  const [staffFilter, setStaffFilter] = useState('ALL');
   const [channelFilter, setChannelFilter] = useState('ALL'); // 'ALL' | 'INTERNAL' | 'EXTERNAL'
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
   useEffect(() => {
     if (user?.role === 'admin') {
-      // 1. Fetch In-House Staff
       axios.get('http://192.168.1.2:5000/api/users/staff')
         .then(res => setStaffList(res.data || []))
         .catch(err => console.error("Error loading staff", err));
 
-      // 2. Fetch External Service Providers
       axios.get('http://192.168.1.2:5000/api/service-providers')
         .then(res => setServiceProviders(res.data || []))
         .catch(err => console.error("Error loading service providers", err));
@@ -243,12 +246,15 @@ const MaintenanceView = ({ requests = [], onRefresh }) => {
 
   const handleAssign = async (id, assignData) => {
     try {
-      await axios.patch(`http://192.168.1.2:5000/api/requests/assign/${id}`, assignData);
+      const res = await axios.patch(`http://192.168.1.2:5000/api/requests/assign/${id}`, assignData);
       toast.success(
         assignData.assignType === 'EXTERNAL' 
           ? "Assigned to Service Provider Successfully" 
           : "Assigned to Maintenance Staff Successfully"
       );
+      
+      // Update local state if needed or close
+      setSelectedJob(res.data || null);
       setSelectedJob(null);
       if (onRefresh) onRefresh();
     } catch (err) { 
@@ -270,7 +276,6 @@ const MaintenanceView = ({ requests = [], onRefresh }) => {
   const handleResetFilters = () => {
     setSearchTicket('');
     setStatusFilter('ALL');
-    setStaffFilter('ALL');
     setChannelFilter('ALL');
     setStartDate('');
     setEndDate('');
@@ -300,18 +305,12 @@ const MaintenanceView = ({ requests = [], onRefresh }) => {
 
       // 3. Channel Filter (Internal Staff vs Service Provider)
       if (channelFilter !== 'ALL') {
-        const type = req.assignType || 'INTERNAL';
-        if (type !== channelFilter) return false;
+        const isExternal = req.assignType === 'EXTERNAL' || (req.assignedTo && req.assignedTo.includes('['));
+        if (channelFilter === 'EXTERNAL' && !isExternal) return false;
+        if (channelFilter === 'INTERNAL' && isExternal) return false;
       }
 
-      // 4. Staff / Provider Name Filtering
-      if (staffFilter !== 'ALL') {
-        if (!req.assignedTo || !req.assignedTo.toLowerCase().includes(staffFilter.toLowerCase())) {
-          return false;
-        }
-      }
-
-      // 5. Date Range Filtering
+      // 4. Date Range Filtering
       if (startDate || endDate) {
         const reqDateStr = req.date || req.createdAt;
         if (!reqDateStr) return false;
@@ -323,7 +322,7 @@ const MaintenanceView = ({ requests = [], onRefresh }) => {
 
       return true;
     });
-  }, [requests, searchTicket, statusFilter, staffFilter, channelFilter, startDate, endDate]);
+  }, [requests, searchTicket, statusFilter, channelFilter, startDate, endDate]);
 
   return (
     <div className="p-4 animate-in fade-in duration-300 font-sans antialiased text-slate-700 tracking-normal bg-white">
@@ -403,7 +402,7 @@ const MaintenanceView = ({ requests = [], onRefresh }) => {
         </div>
 
         {/* Reset Button */}
-        {(searchTicket || statusFilter !== 'ALL' || channelFilter !== 'ALL' || staffFilter !== 'ALL' || startDate || endDate) && (
+        {(searchTicket || statusFilter !== 'ALL' || channelFilter !== 'ALL' || startDate || endDate) && (
           <button
             onClick={handleResetFilters}
             className="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors flex items-center gap-1 cursor-pointer"
@@ -439,7 +438,10 @@ const MaintenanceView = ({ requests = [], onRefresh }) => {
             ) : (
               filteredRequests.map((req) => {
                 const style = rowStyles[req.status] || rowStyles.default;
-                const isExternal = req.assignType === 'EXTERNAL';
+                const isExternal = Boolean(
+                  req.assignType === 'EXTERNAL' ||
+                  (req.assignedTo && (req.assignedTo.includes('[') || req.assignedTo.includes('NIC:')))
+                );
 
                 return (
                   <tr 

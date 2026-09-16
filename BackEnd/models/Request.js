@@ -35,20 +35,20 @@ const RequestSchema = new mongoose.Schema({
     default: 'Repair' 
   },
 
-  // 💡 අලුතින් එකතු කළ Factory / Unit (Elisha or Usha)
+  // Factory / Unit
   unit: { 
     type: String, 
     enum: ['Elisha', 'Usha'], 
     default: 'Elisha' 
   },
 
-  // 💡 අලුතින් එකතු කළ Department එක (DB එකෙන් තෝරන එක)
+  // Department
   department: { 
     type: String, 
     required: true 
   },
 
-  // 💡 Form එකෙන් තෝරන Date එක
+  // Date
   date: { 
     type: Date, 
     default: Date.now 
@@ -57,7 +57,7 @@ const RequestSchema = new mongoose.Schema({
   // The core workflow status
   status: { 
     type: String, 
-    enum: ['Assign Pending', 'Assigned', 'Completed'], 
+    enum: ['Assign Pending', 'Assigned', 'Completed', 'DRAFT'], 
     default: 'Assign Pending' 
   },
   
@@ -65,11 +65,22 @@ const RequestSchema = new mongoose.Schema({
   requestedBy: { type: String, required: true },
   userId: { type: String, required: true }, 
 
-  // Assignment Details
-  assignedTo: { type: String, default: null },   // Staff Name
+  // 💡 INTERNAL (Staff) හෝ EXTERNAL (Service Provider) වෙන් කර හඳුනාගැනීමට
+  assignType: { 
+    type: String, 
+    enum: ['INTERNAL', 'EXTERNAL'], 
+    default: 'INTERNAL' 
+  },
+
+  // Assigned Name (Staff Name or Service Provider Name)
+  assignedTo: { 
+    type: String, 
+    default: null 
+  },   
+
+  // Assigned ID (User ID or Service Provider ID)
   assignedToId: { 
-    type: mongoose.Schema.Types.ObjectId, 
-    ref: 'User', 
+    type: mongoose.Schema.Types.Mixed, 
     default: null 
   }, 
 
