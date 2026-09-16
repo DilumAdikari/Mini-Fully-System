@@ -22,12 +22,20 @@ import InventoryManager from './views/InventoryManager';
 import ToolAllocation from './views/ToolAllocation';
 import GRNPage from './views/GRNPage';
 import InventoryReport from './views/InventoryReport';
-import TicketReport from './views/TicketReport'; // 📄 අලුතින් එක් කළ Ticket Report එක
+import TicketReport from './views/TicketReport';
 import SettingsView from './views/SettingsView'; 
 import MaterialsRegistry from './views/MaterialsRegistry';
 import SupplierRegister from './views/SupplierRegister';
+import ServiceProviderMaster from './views/ServiceProviderMaster'; // 💡 Service Provider Master
 import WorkflowConfiguration from './views/WorkflowConfiguration';
 import GRNApprovalsView from './views/GRNApprovalsView';
+
+// 💡 ROUTE SECURITY GUARD HELPER
+const ProtectedRoute = ({ children, moduleKey, user }) => {
+  if (user?.role === 'admin' || user?.userType === 'Admin') return children;
+  const isAllowed = user?.permissionMatrix?.[moduleKey]?.view === true || user?.permissionMatrix?.[moduleKey]?.view === "true";
+  return isAllowed ? children : <Navigate to="/dashboard" replace />;
+};
 
 const MainAppContent = () => {
   const { user, logout } = useApp();
@@ -57,7 +65,7 @@ const MainAppContent = () => {
 
   // 2. Load Inventory, Staff, and Department Data
   const loadSystemData = async () => {
-    if (!user || user.role !== 'admin') return;
+    if (!user) return;
     try {
       const [grnRes, staffRes, depRes] = await Promise.all([
         axios.get('http://192.168.1.2:5000/api/grn'),
@@ -109,7 +117,7 @@ const MainAppContent = () => {
     }
   };
 
-  // 🔔 6. Clear Notifications
+  // 🔔 6. Clear Notifications View
   const handleClearNotifications = () => {
     if (notifications.length === 0) return;
     setNotifications([]); 
@@ -181,7 +189,7 @@ const MainAppContent = () => {
             <div className="relative" ref={notifRef}>
               <button 
                 onClick={() => setIsNotifOpen(!isNotifOpen)}
-                className="p-2 text-slate-500 hover:bg-slate-50 rounded-lg relative transition-colors outline-none"
+                className="p-2 text-slate-500 hover:bg-slate-50 rounded-lg relative transition-colors outline-none cursor-pointer"
               >
                 <Bell size={19} />
                 {unreadCount > 0 && (
@@ -209,13 +217,13 @@ const MainAppContent = () => {
                     <div className="p-1.5 border-b border-slate-100 bg-slate-50 flex items-center justify-between text-[11px] font-normal text-slate-500">
                       <button 
                         onClick={handleMarkAllAsRead} 
-                        className="flex items-center gap-1.5 px-2.5 py-1 hover:bg-slate-200/60 rounded-md text-slate-600 transition-colors font-normal"
+                        className="flex items-center gap-1.5 px-2.5 py-1 hover:bg-slate-200/60 rounded-md text-slate-600 transition-colors font-normal cursor-pointer"
                       >
                         <CheckSquare size={13} /> Mark all read
                       </button>
                       <button 
                         onClick={handleClearNotifications} 
-                        className="flex items-center gap-1.5 px-2.5 py-1 hover:bg-red-50 text-red-600 rounded-md transition-colors font-normal"
+                        className="flex items-center gap-1.5 px-2.5 py-1 hover:bg-red-50 text-red-600 rounded-md transition-colors font-normal cursor-pointer"
                       >
                         <Trash2 size={13} /> Clear view
                       </button>
@@ -252,7 +260,7 @@ const MainAppContent = () => {
                                 e.stopPropagation(); 
                                 handleMarkAsRead(notif._id);
                               }}
-                              className="p-1.5 bg-white border border-slate-200 rounded-lg text-slate-400 hover:text-emerald-600 transition-colors shadow-sm shrink-0 mt-0.5"
+                              className="p-1.5 bg-white border border-slate-200 rounded-lg text-slate-400 hover:text-emerald-600 transition-colors shadow-sm shrink-0 mt-0.5 cursor-pointer"
                               title="Mark as Read"
                             >
                               <Check size={12} strokeWidth={2} />
@@ -286,75 +294,149 @@ const MainAppContent = () => {
           </div>
         </header>
 
-        {/* MAIN ROUTING AREA */}
+        {/* MAIN ROUTING AREA WITH PERMISSION SAFEGUARDS */}
         <div className="flex-1 overflow-y-auto bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:24px_24px]">
           <Routes>
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
-            <Route path="/dashboard" element={<Dashboard requests={requests} />} />
             
+            {/* Dashboard Overview */}
+            <Route 
+              path="/dashboard" 
+              element={
+                <ProtectedRoute moduleKey="dashboard" user={user}>
+                  <Dashboard requests={requests} />
+                </ProtectedRoute>
+              } 
+            />
+            
+            {/* Maintenance Jobs */}
             <Route 
               path="/maintenance" 
-              element={<MaintenanceView requests={requests} onRefresh={loadData} />} 
-            />
-
-            <Route 
-              path="/grn-create" 
-              element={<GRNPage onRefresh={loadSystemData} />} 
-            />
-
-            <Route 
-              path="/inventory" 
-              element={<InventoryManager grns={grns} onRefresh={loadSystemData} />} 
-            />
-
-            <Route 
-              path="/materials" 
-              element={<MaterialsRegistry />} 
-            />
-
-            <Route 
-              path="/supplier-register" 
-              element={<SupplierRegister />} 
-            />
-
-            <Route 
-              path="/allocation" 
               element={
-                <ToolAllocation 
-                  inventoryItems={grns} 
-                  staffList={staffList} 
-                  onRefresh={loadSystemData} 
-                />
+                <ProtectedRoute moduleKey="maintenance" user={user}>
+                  <MaintenanceView requests={requests} onRefresh={loadData} />
+                </ProtectedRoute>
               } 
             />
 
+            {/* Stock Entry (GRN) */}
             <Route 
-              path="/workflow-setup" 
-              element={<WorkflowConfiguration />} 
+              path="/grn-create" 
+              element={
+                <ProtectedRoute moduleKey="grn_create" user={user}>
+                  <GRNPage onRefresh={loadSystemData} />
+                </ProtectedRoute>
+              } 
             />
 
+            {/* Tool Inventory */}
+            <Route 
+              path="/inventory" 
+              element={
+                <ProtectedRoute moduleKey="inventory" user={user}>
+                  <InventoryManager grns={grns} onRefresh={loadSystemData} />
+                </ProtectedRoute>
+              } 
+            />
+
+            {/* Materials Registry */}
+            <Route 
+              path="/materials" 
+              element={
+                <ProtectedRoute moduleKey="materials" user={user}>
+                  <MaterialsRegistry />
+                </ProtectedRoute>
+              } 
+            />
+
+            {/* Supplier Registration */}
+            <Route 
+              path="/supplier-register" 
+              element={
+                <ProtectedRoute moduleKey="supplier_register" user={user}>
+                  <SupplierRegister />
+                </ProtectedRoute>
+              } 
+            />
+
+            {/* 💡 External Service Provider Master (NIC Supported) */}
+            <Route 
+              path="/service-providers" 
+              element={
+                <ProtectedRoute moduleKey="supplier_register" user={user}>
+                  <ServiceProviderMaster />
+                </ProtectedRoute>
+              } 
+            />
+
+            {/* Staff Allocation */}
+            <Route 
+              path="/allocation" 
+              element={
+                <ProtectedRoute moduleKey="allocation" user={user}>
+                  <ToolAllocation 
+                    inventoryItems={grns} 
+                    staffList={staffList} 
+                    onRefresh={loadSystemData} 
+                  />
+                </ProtectedRoute>
+              } 
+            />
+
+            {/* Workflow Configuration */}
+            <Route 
+              path="/workflow-setup" 
+              element={
+                <ProtectedRoute moduleKey="workflow_setup" user={user}>
+                  <WorkflowConfiguration />
+                </ProtectedRoute>
+              } 
+            />
+
+            {/* GRN Approvals */}
             <Route 
               path="/grn-approvals" 
               element={<GRNApprovalsView onRefresh={loadSystemData} />} 
             />
 
-            {/* Reports Routing */}
+            {/* Inventory Report */}
             <Route 
               path="/reports" 
-              element={<InventoryReport grns={grns} />} 
+              element={
+                <ProtectedRoute moduleKey="inventory_report" user={user}>
+                  <InventoryReport grns={grns} />
+                </ProtectedRoute>
+              } 
             />
             
-            {/* 💡 Ticket Report Route එකතු කරන ලදී */}
+            {/* Ticket Report */}
             <Route 
               path="/ticket-reports" 
-              element={<TicketReport />} 
+              element={
+                <ProtectedRoute moduleKey="ticket_report" user={user}>
+                  <TicketReport />
+                </ProtectedRoute>
+              } 
             />
 
-            <Route path="/users" element={<UserManagement />} />
+            {/* User Management & RBAC */}
+            <Route 
+              path="/users" 
+              element={
+                <ProtectedRoute moduleKey="users" user={user}>
+                  <UserManagement />
+                </ProtectedRoute>
+              } 
+            />
 
+            {/* Department Settings */}
             <Route 
               path="/settings" 
-              element={<SettingsView onRefresh={loadSystemData} />} 
+              element={
+                <ProtectedRoute moduleKey="department" user={user}>
+                  <SettingsView onRefresh={loadSystemData} />
+                </ProtectedRoute>
+              } 
             />
 
             <Route path="*" element={<Navigate to="/dashboard" replace />} />

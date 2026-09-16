@@ -17,60 +17,64 @@ import {
   Truck,
   Layers,
   BarChart3,
-  Ticket
+  Ticket,
+  Contact2
 } from 'lucide-react';
 
 const Sidebar = ({ user, logout, onAddNew }) => {
   const systemColor = "#A47148";
   const location = useLocation();
 
-  // Dropdown States
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isReportsOpen, setIsReportsOpen] = useState(false);
 
-  // --- MAIN NAVIGATION LINKS CONFIGURATION ---
+  // 💡 PERMISSION CHECK LOGIC
+  // Admin නම් සියල්ල පෙනේ. අනිත් අයට Matrix එකේ view === true නම් පමණක් පෙනේ.
+  const hasPermission = (moduleKey) => {
+    if (user?.role === 'admin' || user?.userType === 'Admin') return true;
+    if (!user?.permissionMatrix) return false;
+    const perm = user.permissionMatrix[moduleKey];
+    return perm?.view === true || perm?.view === "true";
+  };
+
+  // 'New Job' button permission (Maintenance Create permission එක තිබිය යුතුය)
+  const canCreateJob = 
+    user?.role === 'admin' || 
+    user?.userType === 'Admin' || 
+    user?.permissionMatrix?.['maintenance']?.create === true ||
+    user?.permissionMatrix?.['maintenance']?.create === "true";
+
+  // --- MAIN NAVIGATION LINKS ---
   const navItems = [
-    { id: 'dashboard', name: 'Dashboard', icon: LayoutDashboard },
-    { id: 'maintenance', name: 'Maintenance', icon: ClipboardList },
-    
-    // --- STOCK & INVENTORY SECTION ---
-    { 
-      id: 'grn-create', 
-      name: 'Stock Entry (GRN)', 
-      icon: FilePlus, 
-      adminOnly: true 
-    },
-    { 
-      id: 'inventory', 
-      name: 'Tool Inventory', 
-      icon: Package, 
-      adminOnly: true 
-    },
-    { 
-      id: 'allocation', 
-      name: 'Staff Allocation', 
-      icon: UserCheck, 
-      adminOnly: true 
-    },
+    { id: 'dashboard', path: 'dashboard', name: 'Dashboard', icon: LayoutDashboard },
+    { id: 'maintenance', path: 'maintenance', name: 'Maintenance', icon: ClipboardList },
+    { id: 'grn_create', path: 'grn-create', name: 'Stock Entry (GRN)', icon: FilePlus },
+    { id: 'inventory', path: 'inventory', name: 'Tool Inventory', icon: Package },
+    { id: 'allocation', path: 'allocation', name: 'Staff Allocation', icon: UserCheck },
   ];
 
-  // 📊 REPORTS SUB-ITEMS
+  // --- REPORTS SUB-ITEMS ---
   const reportSubItems = [
-    { id: 'reports', name: 'Inventory Report', icon: FileText },
-    { id: 'ticket-reports', name: 'Ticket Report', icon: Ticket },
+    { id: 'inventory_report', path: 'reports', name: 'Inventory Report', icon: FileText },
+    { id: 'ticket_report', path: 'ticket-reports', name: 'Ticket Report', icon: Ticket },
   ];
 
-  // ⚙️ SETTINGS SUB-ITEMS
+  // --- ⚙️ SETTINGS SUB-ITEMS (Service Providers ඇතුළත්ව) ---
   const settingsSubItems = [
-    { id: 'workflow-setup', name: 'Workflow Setup', icon: Layers }, 
-    { id: 'supplier-register', name: 'Supplier Registration', icon: Truck }, 
-    { id: 'materials', name: 'Materials Registry', icon: Boxes },
-    { id: 'users', name: 'User Management', icon: Users },
-    { id: 'settings', name: 'Department', icon: Settings },
+    { id: 'workflow_setup', path: 'workflow-setup', name: 'Workflow Setup', icon: Layers }, 
+    { id: 'supplier_register', path: 'supplier-register', name: 'Supplier Registration', icon: Truck }, 
+    { id: 'service_providers', path: 'service-providers', name: 'Service Providers', icon: Contact2 }, // 💡 මෙතැනට එක් කරන ලදී
+    { id: 'materials', path: 'materials', name: 'Materials Registry', icon: Boxes },
+    { id: 'users', path: 'users', name: 'User Management', icon: Users },
+    { id: 'department', path: 'settings', name: 'Department', icon: Settings },
   ];
 
-  const isReportActive = reportSubItems.some(sub => location.pathname === `/${sub.id}`);
-  const isSettingsActive = settingsSubItems.some(sub => location.pathname === `/${sub.id}`);
+  // Permission පවතින sub-items පමණක් filter කරගැනීම
+  const visibleReports = reportSubItems.filter(item => hasPermission(item.id));
+  const visibleSettings = settingsSubItems.filter(item => hasPermission(item.id));
+
+  const isReportActive = visibleReports.some(sub => location.pathname === `/${sub.path}`);
+  const isSettingsActive = visibleSettings.some(sub => location.pathname === `/${sub.path}`);
 
   return (
     <>
@@ -119,27 +123,28 @@ const Sidebar = ({ user, logout, onAddNew }) => {
         <nav className="flex-1 px-3 py-6 space-y-2 overflow-y-auto overflow-x-hidden custom-sidebar-scroll">
           
           {/* ADD NEW JOB ACTION BUTTON */}
-          <button
-            onClick={onAddNew}
-            className="w-full flex items-center h-12 rounded-xl transition-all relative group/add overflow-hidden mb-6 bg-white/10 hover:bg-white/20 border border-white/10"
-          >
-            <div className="w-[54px] min-w-[54px] flex items-center justify-center shrink-0">
-              <PlusCircle size={20} className="text-white" strokeWidth={1.5} />
-            </div>
-            <span className="font-semibold text-[10px] uppercase tracking-wider text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 ml-2">
-              New Job
-            </span>
-          </button>
+          {canCreateJob && (
+            <button
+              onClick={onAddNew}
+              className="w-full flex items-center h-12 rounded-xl transition-all relative group/add overflow-hidden mb-6 bg-white/10 hover:bg-white/20 border border-white/10 cursor-pointer"
+            >
+              <div className="w-[54px] min-w-[54px] flex items-center justify-center shrink-0">
+                <PlusCircle size={20} className="text-white" strokeWidth={1.5} />
+              </div>
+              <span className="font-semibold text-[10px] uppercase tracking-wider text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 ml-2">
+                New Job
+              </span>
+            </button>
+          )}
 
           {/* Standard Navigation Rendering */}
           {navItems.map((item) => {
-            if (item.adminOnly && user?.role !== 'admin') return null;
-            if (item.allowedRoles && !item.allowedRoles.includes(user?.userType)) return null;
-            
+            if (!hasPermission(item.id)) return null;
+
             return (
               <NavLink
                 key={item.id}
-                to={`/${item.id}`}
+                to={`/${item.path}`}
                 className={({ isActive }) => `
                   w-full flex items-center h-12 rounded-xl transition-all relative group/btn overflow-hidden
                   ${isActive ? 'bg-white/15' : 'hover:bg-white/5'}
@@ -171,69 +176,70 @@ const Sidebar = ({ user, logout, onAddNew }) => {
           })}
 
           {/* ================================================== */}
-          {/* 📊 Collapsible Reports Dropdown Accordion           */}
+          {/* 📊 Reports Dropdown Accordion                       */}
           {/* ================================================== */}
-          <div className="space-y-1 block relative">
-            <button
-              onClick={() => setIsReportsOpen(!isReportsOpen)}
-              className={`w-full flex items-center h-12 rounded-xl transition-all relative overflow-hidden outline-none cursor-pointer ${
-                isReportActive ? 'bg-white/10 text-white' : 'text-white/60 hover:bg-white/5 hover:text-white'
-              }`}
-            >
-              <div className="w-[54px] min-w-[54px] flex items-center justify-center shrink-0">
-                <BarChart3 
-                  size={20} 
-                  strokeWidth={isReportActive ? 2 : 1.5}
-                  className={`transition-all duration-300 ${isReportActive ? 'text-white' : 'text-white/60'}`}
-                />
-              </div>
-              
-              <span className="font-medium text-[11px] tracking-wide ml-2 opacity-0 group-hover:opacity-100 transition-all duration-300 flex-1 text-left whitespace-nowrap">
-                Reports
-              </span>
+          {visibleReports.length > 0 && (
+            <div className="space-y-1 block relative">
+              <button
+                onClick={() => setIsReportsOpen(!isReportsOpen)}
+                className={`w-full flex items-center h-12 rounded-xl transition-all relative overflow-hidden outline-none cursor-pointer ${
+                  isReportActive ? 'bg-white/10 text-white' : 'text-white/60 hover:bg-white/5 hover:text-white'
+                }`}
+              >
+                <div className="w-[54px] min-w-[54px] flex items-center justify-center shrink-0">
+                  <BarChart3 
+                    size={20} 
+                    strokeWidth={isReportActive ? 2 : 1.5}
+                    className={`transition-all duration-300 ${isReportActive ? 'text-white' : 'text-white/60'}`}
+                  />
+                </div>
+                
+                <span className="font-medium text-[11px] tracking-wide ml-2 opacity-0 group-hover:opacity-100 transition-all duration-300 flex-1 text-left whitespace-nowrap">
+                  Reports
+                </span>
 
-              <div className="pr-4 opacity-0 group-hover:opacity-100 transition-all duration-300">
-                <ChevronDown 
-                  size={14} 
-                  className={`transform transition-transform duration-200 ${isReportsOpen ? 'rotate-180' : 'rotate-0'}`} 
-                />
-              </div>
-            </button>
+                <div className="pr-4 opacity-0 group-hover:opacity-100 transition-all duration-300">
+                  <ChevronDown 
+                    size={14} 
+                    className={`transform transition-transform duration-200 ${isReportsOpen ? 'rotate-180' : 'rotate-0'}`} 
+                  />
+                </div>
+              </button>
 
-            {/* Sub-items for Reports */}
-            <div 
-              className={`transition-all duration-300 ease-in-out overflow-hidden space-y-1 pl-4 ${
-                isReportsOpen ? 'max-h-40 opacity-100 mt-1' : 'max-h-0 opacity-0 pointer-events-none'
-              }`}
-            >
-              {reportSubItems.map((sub) => (
-                <NavLink
-                  key={sub.id}
-                  to={`/${sub.id}`}
-                  className={({ isActive }) => `
-                    w-full flex items-center h-10 rounded-lg transition-all relative overflow-hidden
-                    ${isActive ? 'bg-white/20 text-white' : 'text-white/60 hover:bg-white/5 hover:text-white'}
-                  `}
-                >
-                  {({ isActive }) => (
-                    <>
-                      <div className="w-10 min-w-10 flex items-center justify-center shrink-0">
-                        <sub.icon size={15} strokeWidth={isActive ? 2 : 1.5} />
-                      </div>
-                      <span className="font-medium text-[11px] tracking-wide ml-2 whitespace-nowrap transition-opacity duration-300">
-                        {sub.name}
-                      </span>
-                    </>
-                  )}
-                </NavLink>
-              ))}
+              <div 
+                className={`transition-all duration-300 ease-in-out overflow-hidden space-y-1 pl-4 ${
+                  isReportsOpen ? 'max-h-40 opacity-100 mt-1' : 'max-h-0 opacity-0 pointer-events-none'
+                }`}
+              >
+                {visibleReports.map((sub) => (
+                  <NavLink
+                    key={sub.id}
+                    to={`/${sub.path}`}
+                    className={({ isActive }) => `
+                      w-full flex items-center h-10 rounded-lg transition-all relative overflow-hidden
+                      ${isActive ? 'bg-white/20 text-white' : 'text-white/60 hover:bg-white/5 hover:text-white'}
+                    `}
+                  >
+                    {({ isActive }) => (
+                      <>
+                        <div className="w-10 min-w-10 flex items-center justify-center shrink-0">
+                          <sub.icon size={15} strokeWidth={isActive ? 2 : 1.5} />
+                        </div>
+                        <span className="font-medium text-[11px] tracking-wide ml-2 whitespace-nowrap transition-opacity duration-300">
+                          {sub.name}
+                        </span>
+                      </>
+                    )}
+                  </NavLink>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* ================================================== */}
-          {/* ⚙️ Collapsible Settings Dropdown (Admin Only)       */}
+          {/* ⚙️ Settings Dropdown Accordion (Service Providers සමඟ) */}
           {/* ================================================== */}
-          {user?.role === 'admin' && (
+          {visibleSettings.length > 0 && (
             <div className="space-y-1 block relative">
               <button
                 onClick={() => setIsSettingsOpen(!isSettingsOpen)}
@@ -261,16 +267,15 @@ const Sidebar = ({ user, logout, onAddNew }) => {
                 </div>
               </button>
 
-              {/* Sub-items for Settings */}
               <div 
                 className={`transition-all duration-300 ease-in-out overflow-hidden space-y-1 pl-4 ${
-                  isSettingsOpen ? 'max-h-60 opacity-100 mt-1' : 'max-h-0 opacity-0 pointer-events-none'
+                  isSettingsOpen ? 'max-h-72 opacity-100 mt-1' : 'max-h-0 opacity-0 pointer-events-none'
                 }`}
               >
-                {settingsSubItems.map((sub) => (
+                {visibleSettings.map((sub) => (
                   <NavLink
                     key={sub.id}
-                    to={`/${sub.id}`}
+                    to={`/${sub.path}`}
                     className={({ isActive }) => `
                       w-full flex items-center h-10 rounded-lg transition-all relative overflow-hidden
                       ${isActive ? 'bg-white/20 text-white' : 'text-white/60 hover:bg-white/5 hover:text-white'}
