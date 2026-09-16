@@ -9,9 +9,10 @@ const MaintenanceForm = ({ isOpen, onClose, onRefresh }) => {
   const [loading, setLoading] = useState(false);
   const [departments, setDepartments] = useState([]);
   
+  // 💡 Initial state එකේ type එක හිස් string එකක් ලෙස සකසා ඇත
   const [formData, setFormData] = useState({
     title: '',
-    type: 'Repair',
+    type: '',
     unit: 'Elisha',
     department: '',
     date: new Date().toISOString().split('T')[0],
@@ -46,10 +47,13 @@ const MaintenanceForm = ({ isOpen, onClose, onRefresh }) => {
         throw new Error("Please select a department.");
       }
 
-      // Payload එකට unit, department, date කෙලින්ම යවනවා (Priority සම්පූර්ණයෙන්ම අයින් කර ඇත)
+      if (!formData.type.trim()) {
+        throw new Error("Please enter or select a Job Type.");
+      }
+
       const payload = {
         title: formData.title,
-        type: formData.type,
+        type: formData.type.trim(),
         unit: formData.unit,
         department: formData.department,
         date: formData.date,
@@ -64,9 +68,11 @@ const MaintenanceForm = ({ isOpen, onClose, onRefresh }) => {
       await axios.post('http://192.168.1.2:5000/api/requests', payload);
       
       toast.success('Request Submitted Successfully!', { id: t });
+      
+      // 💡 Reset කරන විටද type එක හිස්ව තබයි
       setFormData({
         title: '',
-        type: 'Repair',
+        type: '',
         unit: 'Elisha',
         department: departments[0]?.name || '',
         date: new Date().toISOString().split('T')[0],
@@ -83,12 +89,20 @@ const MaintenanceForm = ({ isOpen, onClose, onRefresh }) => {
   };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300 font-sans">
       <div className="bg-white w-full max-w-md rounded-[32px] shadow-2xl overflow-hidden">
         
+        {/* CSS: Datalist එකේ Default Browser Arrow සහ Tooltip Highlight ඉවත් කිරීමට */}
+        <style>{`
+          input[list]::-webkit-calendar-picker-indicator {
+            display: none !important;
+            -webkit-appearance: none !important;
+          }
+        `}</style>
+
         <div className="flex items-center justify-between p-6 border-b border-slate-100">
           <h2 className="text-lg font-black text-slate-800 uppercase tracking-tight">New Maintenance Request</h2>
-          <button onClick={onClose} className="p-2 hover:bg-slate-50 rounded-full text-slate-400 transition-colors">
+          <button onClick={onClose} className="p-2 hover:bg-slate-50 rounded-full text-slate-400 transition-colors cursor-pointer">
             <X size={20} />
           </button>
         </div>
@@ -106,22 +120,31 @@ const MaintenanceForm = ({ isOpen, onClose, onRefresh }) => {
           </div>
 
           <div className="grid grid-cols-2 gap-3">
+            {/* 💡 Typable Job Type with Suggestions */}
             <div>
               <label className="block text-[10px] font-black uppercase text-slate-400 tracking-widest mb-1.5">Job Type</label>
-              <select 
-                className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm outline-none cursor-pointer focus:border-[#A47148]"
+              <input 
+                list="maintenanceJobTypes"
+                required
+                autoComplete="off"
+                className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm outline-none focus:border-[#A47148]"
+                placeholder="Type or Choose..."
                 value={formData.type}
                 onChange={(e) => setFormData({...formData, type: e.target.value})}
-              >
-                <option value="Repair">Repair</option>
-                <option value="Preventive">Preventive</option>
-                <option value="Installation">Installation</option>
-                <option value="Emergency">Emergency</option>
-                <option value="Plumbing">Plumbing</option>
-                <option value="Electrical">Electrical</option>
-                <option value="Furniture">Furniture</option>
-                <option value="Network">Network</option>
-              </select>
+              />
+              <datalist id="maintenanceJobTypes">
+                <option value="Repair" />
+                <option value="Preventive" />
+                <option value="Installation" />
+                <option value="Emergency" />
+                <option value="Plumbing" />
+                <option value="Electrical" />
+                <option value="Furniture" />
+                <option value="Network" />
+                <option value="Sewing Machine" />
+                <option value="Boiler Service" />
+                <option value="Civil Work" />
+              </datalist>
             </div>
 
             <div>
@@ -129,7 +152,7 @@ const MaintenanceForm = ({ isOpen, onClose, onRefresh }) => {
               <input 
                 type="date"
                 required
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-2xl text-sm outline-none focus:border-[#A47148]"
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-2xl text-sm outline-none focus:border-[#A47148] cursor-pointer"
                 value={formData.date}
                 onChange={(e) => setFormData({...formData, date: e.target.value})}
               />
@@ -186,14 +209,14 @@ const MaintenanceForm = ({ isOpen, onClose, onRefresh }) => {
             <button 
               type="button" 
               onClick={onClose}
-              className="flex-1 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-600"
+              className="flex-1 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-slate-600 cursor-pointer"
             >
               Cancel
             </button>
             <button 
               type="submit" 
               disabled={loading}
-              className="flex-[2] py-3.5 rounded-2xl text-white text-[10px] font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all disabled:opacity-50"
+              className="flex-[2] py-3.5 rounded-2xl text-white text-[10px] font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all disabled:opacity-50 cursor-pointer"
               style={{ backgroundColor: systemColor }}
             >
               {loading ? "Saving..." : "Submit Request"}
