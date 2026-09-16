@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
-import { Search, Printer, Download, RotateCcw, FileText } from 'lucide-react';
+import { Search, Printer, Download, RotateCcw, FileText, Users, Truck } from 'lucide-react';
 
 const TicketReport = () => {
   const [requests, setRequests] = useState([]);
@@ -10,7 +10,8 @@ const TicketReport = () => {
   // Filters
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [staffFilter, setStaffFilter] = useState('ALL');
-  const [unitFilter, setUnitFilter] = useState('ALL'); // 💡 Factory/Unit filter state
+  const [unitFilter, setUnitFilter] = useState('ALL');
+  const [channelFilter, setChannelFilter] = useState('ALL'); // 💡 Channel Filter: 'ALL' | 'INTERNAL' | 'EXTERNAL'
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
@@ -33,6 +34,14 @@ const TicketReport = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Helper: Service Provider ද නැද්ද යන්න නිවැරදිව තහවුරු කරගැනීම
+  const isServiceProvider = (item) => {
+    return Boolean(
+      item.assignType === 'EXTERNAL' ||
+      (item.assignedTo && (item.assignedTo.includes('[') || item.assignedTo.includes('NIC:')))
+    );
   };
 
   // Filter Logic
@@ -60,7 +69,14 @@ const TicketReport = () => {
         }
       }
 
-      // 4. Date Range Filter
+      // 4. 💡 Channel Filter (Internal Staff vs Service Provider)
+      if (channelFilter !== 'ALL') {
+        const isExternal = isServiceProvider(item);
+        if (channelFilter === 'EXTERNAL' && !isExternal) return false;
+        if (channelFilter === 'INTERNAL' && isExternal) return false;
+      }
+
+      // 5. Date Range Filter
       if (startDate || endDate) {
         const dateVal = item.date || item.createdAt;
         if (!dateVal) return false;
@@ -72,37 +88,39 @@ const TicketReport = () => {
 
       return true;
     });
-  }, [requests, statusFilter, staffFilter, unitFilter, startDate, endDate]);
+  }, [requests, statusFilter, staffFilter, unitFilter, channelFilter, startDate, endDate]);
 
   // Reset Filters
   const handleReset = () => {
     setStatusFilter('ALL');
     setStaffFilter('ALL');
     setUnitFilter('ALL');
+    setChannelFilter('ALL');
     setStartDate('');
     setEndDate('');
   };
 
-  // Print (PDF) Trigger
+  // Print Trigger
   const handlePrint = () => {
     window.print();
   };
 
-  // CSV Export with Unit & Department
+  // CSV Export with Unit, Department & Channel
   const handleExportCSV = () => {
     if (filteredData.length === 0) return;
 
-    const headers = ["ID,DESCRIPTION,UNIT,DEPARTMENT,ASSIGNED TO,DATE,STATUS"];
+    const headers = ["ID,DESCRIPTION,UNIT,DEPARTMENT,ASSIGNED TO,CHANNEL,DATE,STATUS"];
     const rows = filteredData.map(item => {
       const id = item.tid || '';
       const desc = `"${(item.title || item.description || '').replace(/"/g, '""')}"`;
       const unit = `"${item.unit || 'Elisha'}"`;
       const dept = `"${item.department || 'N/A'}"`;
       const assigned = `"${item.assignedTo || 'Unassigned'}"`;
+      const channel = isServiceProvider(item) ? '"Service Provider"' : '"Maintenance Staff"';
       const date = item.date ? new Date(item.date).toISOString().split('T')[0] : 'N/A';
       const status = item.status === 'Assign Pending' ? 'DRAFT' : item.status;
 
-      return [id, desc, unit, dept, assigned, date, status].join(',');
+      return [id, desc, unit, dept, assigned, channel, date, status].join(',');
     });
 
     const csvContent = "data:text/csv;charset=utf-8," + [headers, ...rows].join("\n");
@@ -178,6 +196,20 @@ const TicketReport = () => {
           </select>
         </div>
 
+        {/* 💡 Channel Filter (Internal Staff vs Service Provider) */}
+        <div className="min-w-[150px]">
+          <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">Channel</label>
+          <select
+            value={channelFilter}
+            onChange={(e) => setChannelFilter(e.target.value)}
+            className="w-full px-3 py-1.5 bg-white border border-slate-300 rounded-md text-xs font-medium uppercase outline-none focus:border-slate-500 cursor-pointer"
+          >
+            <option value="ALL">All Channels</option>
+            <option value="INTERNAL">Internal Staff</option>
+            <option value="EXTERNAL">Service Provider</option>
+          </select>
+        </div>
+
         {/* Assigned Staff Filter */}
         <div className="min-w-[160px]">
           <label className="block text-[10px] font-bold uppercase text-slate-400 mb-1">Assigned Staff</label>
@@ -218,7 +250,7 @@ const TicketReport = () => {
         </div>
 
         {/* Reset Filter Button */}
-        {(statusFilter !== 'ALL' || staffFilter !== 'ALL' || unitFilter !== 'ALL' || startDate || endDate) && (
+        {(statusFilter !== 'ALL' || staffFilter !== 'ALL' || unitFilter !== 'ALL' || channelFilter !== 'ALL' || startDate || endDate) && (
           <div className="self-end">
             <button
               onClick={handleReset}
@@ -250,9 +282,11 @@ const TicketReport = () => {
             <tr className="bg-slate-100 border-b border-slate-300 text-slate-700">
               <th className="px-4 py-2.5 text-[11px] font-bold uppercase border-r border-slate-300 w-[110px]">ID</th>
               <th className="px-4 py-2.5 text-[11px] font-bold uppercase border-r border-slate-300">DESCRIPTION</th>
-              <th className="px-4 py-2.5 text-[11px] font-bold uppercase border-r border-slate-300 w-[110px]">UNIT</th>
-              <th className="px-4 py-2.5 text-[11px] font-bold uppercase border-r border-slate-300 w-[140px]">DEPARTMENT</th>
+              <th className="px-4 py-2.5 text-[11px] font-bold uppercase border-r border-slate-300 w-[100px]">UNIT</th>
+              <th className="px-4 py-2.5 text-[11px] font-bold uppercase border-r border-slate-300 w-[130px]">DEPARTMENT</th>
               <th className="px-4 py-2.5 text-[11px] font-bold uppercase border-r border-slate-300 w-[160px]">ASSIGNED TO</th>
+              {/* 💡 නව CHANNEL Column එක */}
+              <th className="px-4 py-2.5 text-[11px] font-bold uppercase border-r border-slate-300 w-[140px] text-center">CHANNEL</th>
               <th className="px-4 py-2.5 text-[11px] font-bold uppercase border-r border-slate-300 w-[110px]">DATE</th>
               <th className="px-4 py-2.5 text-[11px] font-bold uppercase w-[120px] text-center">STATUS</th>
             </tr>
@@ -260,13 +294,13 @@ const TicketReport = () => {
           <tbody className="text-xs divide-y divide-slate-200">
             {loading ? (
               <tr>
-                <td colSpan="7" className="py-10 text-center text-slate-400 uppercase font-semibold">
+                <td colSpan="8" className="py-10 text-center text-slate-400 uppercase font-semibold">
                   Generating Ticket Data...
                 </td>
               </tr>
             ) : filteredData.length === 0 ? (
               <tr>
-                <td colSpan="7" className="py-10 text-center text-slate-400 uppercase font-semibold">
+                <td colSpan="8" className="py-10 text-center text-slate-400 uppercase font-semibold">
                   No tickets matched the specified criteria
                 </td>
               </tr>
@@ -274,6 +308,7 @@ const TicketReport = () => {
               filteredData.map((item) => {
                 const isDraft = item.status === 'Assign Pending' || item.status === 'DRAFT';
                 const isCompleted = item.status === 'Completed';
+                const isExternal = isServiceProvider(item);
 
                 return (
                   <tr key={item._id} className="hover:bg-slate-50/80">
@@ -292,6 +327,23 @@ const TicketReport = () => {
                     <td className="px-4 py-2.5 uppercase font-semibold text-slate-700 border-r border-slate-200">
                       {item.assignedTo || 'Unassigned'}
                     </td>
+                    
+                    {/* 💡 CHANNEL BADGE DISPLAY */}
+                    <td className="px-3 py-2.5 text-center border-r border-slate-200">
+                      {item.assignedTo ? (
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${
+                          isExternal 
+                            ? 'bg-amber-100 text-amber-800 border border-amber-300' 
+                            : 'bg-blue-100 text-blue-800 border border-blue-300'
+                        }`}>
+                          {isExternal ? <Truck size={10} /> : <Users size={10} />}
+                          {isExternal ? 'Provider' : 'Staff'}
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-slate-400 font-semibold uppercase">---</span>
+                      )}
+                    </td>
+
                     <td className="px-4 py-2.5 font-mono text-slate-600 border-r border-slate-200">
                       {item.date ? new Date(item.date).toISOString().split('T')[0] : 'N/A'}
                     </td>
