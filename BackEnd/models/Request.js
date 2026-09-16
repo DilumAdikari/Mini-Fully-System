@@ -20,19 +20,12 @@ const RequestSchema = new mongoose.Schema({
     type: String, 
     required: true 
   },
+
+  // 💡 Custom Job Type: ඕනෑම වර්ගයක් අතින් type කර හෝ තෝරා save කරගත හැක (enum ඉවත් කරන ලදී)
   type: { 
     type: String, 
-    enum: [
-      'Repair', 
-      'Preventive', 
-      'Installation', 
-      'Emergency', 
-      'Plumbing', 
-      'Electrical', 
-      'Furniture', 
-      'Network'
-    ], 
-    default: 'Repair' 
+    default: 'Repair',
+    trim: true
   },
 
   // Factory / Unit
@@ -65,7 +58,7 @@ const RequestSchema = new mongoose.Schema({
   requestedBy: { type: String, required: true },
   userId: { type: String, required: true }, 
 
-  // 💡 INTERNAL (Staff) හෝ EXTERNAL (Service Provider) වෙන් කර හඳුනාගැනීමට
+  // INTERNAL (Staff) හෝ EXTERNAL (Service Provider) වෙන් කර හඳුනාගැනීමට
   assignType: { 
     type: String, 
     enum: ['INTERNAL', 'EXTERNAL'], 
