@@ -13,6 +13,7 @@ const StaffInventory = require('./models/StaffInventory');
 const Notification = require('./models/Notification'); 
 const Supplier = require('./models/Supplier'); 
 const WorkflowTemplate = require('./models/WorkflowTemplate'); 
+const ServiceProvider = require('./models/ServiceProvider'); // 💡 External Service Provider Master Model
 
 const app = express();
 
@@ -55,7 +56,7 @@ const seedDefaultAdmin = async () => {
         password: 'admin123', 
         userType: 'Admin',
         department: 'Management',
-        permissionMatrix: {} // Default Admin matrix
+        permissionMatrix: {}
       });
 
       await defaultAdmin.save();
@@ -120,9 +121,21 @@ const generateNextSupplierID = async () => {
   }
 };
 
+// 💡 Service Provider Master Auto Code (SP0001, SP0002...)
+const generateNextSPCode = async () => {
+  try {
+    const lastSP = await ServiceProvider.findOne({}, { code: 1 }).sort({ _id: -1 });
+    if (!lastSP || !lastSP.code) return "SP0001";
+    const lastNum = parseInt(lastSP.code.replace("SP", ""), 10);
+    if (isNaN(lastNum)) return "SP0001";
+    return `SP${(lastNum + 1).toString().padStart(4, '0')}`;
+  } catch (error) {
+    return "SP0001";
+  }
+};
+
 // --- USER MANAGEMENT & AUTH ROUTES ---
 
-// 💡 FIXED: permissionMatrix එක frontend context එකට return කර ඇත
 app.post('/api/users/login', async (req, res) => {
   try {
     const { username, password } = req.body;
@@ -138,7 +151,7 @@ app.post('/api/users/login', async (req, res) => {
       userType: user.userType, 
       uid: user._id,
       department: user.department,
-      permissionMatrix: user.permissionMatrix || {} // Frontend එකට permissions යවයි
+      permissionMatrix: user.permissionMatrix || {}
     });
   } catch (err) {
     res.status(500).json({ message: "Login server error" });
@@ -199,7 +212,6 @@ app.get('/api/users/staff', async (req, res) => {
   }
 });
 
-// 💡 FIXED: Permission update route එක password ආරක්ෂිතව සහ updated object එක සමඟ return කරයි
 app.patch('/api/users/update-permissions/:id', async (req, res) => {
   try {
     const { userType, department, permissionMatrix, password } = req.body;
@@ -210,7 +222,6 @@ app.patch('/api/users/update-permissions/:id', async (req, res) => {
       permissionMatrix: permissionMatrix || {}
     };
 
-    // Password අලුතින් එවා ඇත්නම් පමණක් එයද update කරන්න
     if (password && password.trim() !== '') {
       updateData.password = password;
     }
@@ -225,11 +236,61 @@ app.patch('/api/users/update-permissions/:id', async (req, res) => {
       return res.status(404).json({ message: "User profile not discovered" });
     }
 
-    console.log(`✅ Permissions updated for: ${updatedUser.username}`);
     res.json({ message: "User security matrix clearance tokens updated successfully!", user: updatedUser });
   } catch (err) {
     console.error("❌ Permission Matrix Update Error:", err);
     res.status(500).json({ message: "Failed to finalize encryption matrix update" });
+  }
+});
+
+// --- SERVICE PROVIDER MASTER ROUTES (NIC Supported) ---
+
+app.get('/api/service-providers', async (req, res) => {
+  try {
+    const list = await ServiceProvider.find().sort({ createdAt: -1 });
+    res.json(list || []);
+  } catch (err) {
+    console.error("❌ Fetch Service Providers Error:", err);
+    res.status(500).json({ message: "Failed to fetch service providers" });
+  }
+});
+
+app.post('/api/service-providers', async (req, res) => {
+  try {
+    const { name, nic, serviceType, contactPerson, phone, email, address } = req.body;
+
+    if (!name || !nic || !phone) {
+      return res.status(400).json({ message: "Name, NIC and Phone are required fields" });
+    }
+
+    const nextCode = await generateNextSPCode();
+    const newSP = new ServiceProvider({
+      code: nextCode,
+      name: name.trim().toUpperCase(),
+      nic: nic.trim().toUpperCase(),
+      serviceType: serviceType || 'General Service',
+      contactPerson,
+      phone: phone.trim(),
+      email,
+      address,
+      status: 'Active'
+    });
+
+    const savedSP = await newSP.save();
+    console.log(`✅ New Service Provider Registered: ${savedSP.name} [NIC: ${savedSP.nic}]`);
+    res.status(201).json(savedSP);
+  } catch (err) {
+    console.error("❌ Register Service Provider Error:", err);
+    res.status(400).json({ message: "Failed to register service provider", error: err.message });
+  }
+});
+
+app.delete('/api/service-providers/:id', async (req, res) => {
+  try {
+    await ServiceProvider.findByIdAndDelete(req.params.id);
+    res.json({ message: "Service Provider removed successfully" });
+  } catch (err) {
+    res.status(500).json({ message: "Delete failed" });
   }
 });
 
@@ -273,30 +334,41 @@ app.post('/api/requests', async (req, res) => {
   }
 });
 
+// 💡 Assign Staff OR External Service Provider
 app.patch('/api/requests/assign/:id', async (req, res) => {
   try {
-    const { staffId, staffName } = req.body;
+    const { staffId, staffName, assignType, targetId, targetName } = req.body;
+    
+    const finalAssignType = assignType || 'INTERNAL';
+    const finalAssignedName = targetName || staffName;
+    const finalAssignedId = targetId || staffId;
+
     const updated = await Request.findByIdAndUpdate(
       req.params.id,
       { 
         status: 'Assigned',
-        assignedTo: staffName,
-        assignedToId: staffId,
+        assignType: finalAssignType, // 'INTERNAL' or 'EXTERNAL'
+        assignedTo: finalAssignedName,
+        assignedToId: finalAssignedId,
         updatedAt: new Date()
       },
       { new: true }
     );
 
-    const newNotif = new Notification({
-      userId: staffId,
-      message: `You have been assigned to a new Maintenance Job: ${updated.tid} - ${updated.title || updated.description || 'No Description'}`,
-      type: 'ASSIGNED',
-      requestId: updated._id
-    });
-    await newNotif.save();
+    // Notify only if an internal user is assigned
+    if (finalAssignType === 'INTERNAL' && finalAssignedId) {
+      const newNotif = new Notification({
+        userId: finalAssignedId,
+        message: `You have been assigned to a new Maintenance Job: ${updated.tid} - ${updated.title || updated.description || 'No Description'}`,
+        type: 'ASSIGNED',
+        requestId: updated._id
+      });
+      await newNotif.save();
+    }
 
     res.json(updated);
   } catch (err) {
+    console.error("❌ Assignment Error:", err);
     res.status(400).json({ message: "Authorization assignment failed" });
   }
 });
@@ -317,7 +389,7 @@ app.patch('/api/requests/admin-complete/:id', async (req, res) => {
       return res.status(404).json({ message: "Maintenance Job not found" });
     }
 
-    if (updated.assignedToId) {
+    if (updated.assignType === 'INTERNAL' && updated.assignedToId) {
       const newNotif = new Notification({
         userId: updated.assignedToId,
         message: `Maintenance Job ${updated.tid} has been marked as COMPLETED by Admin.`,
