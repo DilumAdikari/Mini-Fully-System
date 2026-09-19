@@ -26,13 +26,12 @@ const StatCard = ({ title, value, icon: Icon, color }) => (
 
 const Dashboard = ({ requests = [] }) => {
   const systemColor = "#A47148";
-  const [timeRange, setTimeRange] = useState('30'); // '7' or '30' days
+  const [timeRange, setTimeRange] = useState('30');
 
-  // Standard Stat Colors
   const colors = {
-    draft: '#f59e0b',     // Amber / Pending
-    assigned: '#3b82f6',  // Blue / Active
-    completed: '#10b981'  // Emerald / Completed
+    draft: '#f59e0b',     // Pending (Amber)
+    assigned: '#3b82f6',  // Assigned (Blue)
+    completed: '#10b981'  // Completed (Emerald)
   };
 
   const stats = useMemo(() => ({
@@ -42,7 +41,6 @@ const Dashboard = ({ requests = [] }) => {
     completed: requests.filter(r => r.status === 'Completed').length,
   }), [requests]);
 
-  // 💡 Stacked Status Counts per Day calculation
   const chartDays = useMemo(() => {
     const daysCount = parseInt(timeRange, 10);
     const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -54,7 +52,6 @@ const Dashboard = ({ requests = [] }) => {
       const dateStr = d.toISOString().split('T')[0];
       const dayLabel = dayNames[d.getDay()];
 
-      // අදාළ දිනට අයත් tickets සොයා ගැනීම
       const dayRequests = requests.filter(req => {
         const itemDate = req.date || req.createdAt;
         if (!itemDate) return false;
@@ -77,13 +74,10 @@ const Dashboard = ({ requests = [] }) => {
       });
     }
 
-    // Stacked Bar එකේ සම්පූර්ණ උස සදහා උපරිම ප්‍රමාණය සෙවීම
     const maxTotal = Math.max(...result.map(d => d.total), 1);
 
     return result.map(item => {
-      // දවස ඇතුළත එක් එක් තත්වයේ ප්‍රතිශතය (0 නම් සම්පූර්ණ උස 8% ක placeholder එකක් ලෙස තබයි)
       const overallHeightPercent = item.total === 0 ? 8 : Math.max(Math.round((item.total / maxTotal) * 100), 16);
-      
       const draftPercent = item.total > 0 ? (item.draft / item.total) * 100 : 0;
       const assignedPercent = item.total > 0 ? (item.assigned / item.total) * 100 : 0;
       const completedPercent = item.total > 0 ? (item.completed / item.total) * 100 : 0;
@@ -110,7 +104,7 @@ const Dashboard = ({ requests = [] }) => {
         </p>
       </header>
 
-      {/* 4 Cards Overview */}
+      {/* Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard title="Total Requests" value={stats.total} icon={BarChart3} color="#3b82f6" />
         <StatCard title="Assign Pending" value={stats.pending} icon={AlertCircle} color={colors.draft} />
@@ -120,7 +114,7 @@ const Dashboard = ({ requests = [] }) => {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         
-        {/* STACKED WORKLOAD DISTRIBUTION CARD */}
+        {/* WORKLOAD DISTRIBUTION */}
         <div className="lg:col-span-2 bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm flex flex-col justify-between">
           
           <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
@@ -135,7 +129,6 @@ const Dashboard = ({ requests = [] }) => {
             </div>
 
             <div className="flex items-center gap-4">
-              {/* 💡 STATUS COLOR LEGEND */}
               <div className="hidden sm:flex items-center gap-3 text-[10px] font-bold uppercase tracking-wider">
                 <span className="flex items-center gap-1.5 text-slate-600">
                   <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: colors.draft }} />
@@ -162,65 +155,70 @@ const Dashboard = ({ requests = [] }) => {
             </div>
           </div>
 
-          {/* 💡 STACKED BARS CONTAINER */}
-          <div className="h-64 flex items-end justify-between gap-2 px-1 pt-6">
+          {/* Chart Bars Section */}
+          <div className="h-72 flex items-end justify-between gap-2 px-1 pt-12">
             {chartDays.map((item, i) => (
-              <div key={i} className="flex-1 h-full flex flex-col justify-end items-center gap-2.5 group">
+              <div key={i} className="flex-1 h-full flex flex-col justify-end items-center gap-2.5 relative group">
                 
-                {/* Main Bar Wrapper */}
+                {/* Floating Tooltip Card (Hover karne par dikhta hai) */}
+                <div className="absolute -top-16 left-1/2 -translate-x-1/2 bg-slate-900/95 text-white py-2 px-3 rounded-xl opacity-0 group-hover:opacity-100 transition-all duration-200 pointer-events-none z-50 shadow-2xl border border-slate-700/60 whitespace-nowrap backdrop-blur-sm scale-95 group-hover:scale-100">
+                  <div className="flex items-center justify-between gap-3 border-b border-slate-700/80 pb-1 mb-1">
+                    <span className="text-[9px] font-mono text-slate-400 font-bold">{item.date}</span>
+                    <span className="text-[10px] font-extrabold text-white bg-slate-800 px-1.5 py-0.2 rounded">
+                      {item.total} {item.total === 1 ? 'Job' : 'Jobs'}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 text-[9px] font-bold">
+                    <span className="text-amber-400">P: {item.draft}</span>
+                    <span className="text-blue-400">A: {item.assigned}</span>
+                    <span className="text-emerald-400">C: {item.completed}</span>
+                  </div>
+                  {/* Bottom arrow tip */}
+                  <div className="w-2 h-2 bg-slate-900 rotate-45 absolute -bottom-1 left-1/2 -translate-x-1/2 border-r border-b border-slate-700/60" />
+                </div>
+
+                {/* Main Stacked Bar */}
                 <div 
-                  className="w-full transition-all duration-500 rounded-xl relative cursor-pointer flex flex-col-reverse overflow-hidden"
+                  className="w-full transition-all duration-300 rounded-xl relative cursor-pointer flex flex-col-reverse group-hover:brightness-110 shadow-sm"
                   style={{ 
                     height: `${item.overallHeightPercent}%`,
                     backgroundColor: item.total === 0 ? '#f1f5f9' : 'transparent'
                   }}
                 >
-                  {/* Status Segment 1: Completed (Bottom) */}
-                  {item.completed > 0 && (
-                    <div 
-                      style={{ 
-                        height: `${item.completedPercent}%`, 
-                        backgroundColor: colors.completed 
-                      }} 
-                      className="w-full transition-all"
-                    />
-                  )}
-
-                  {/* Status Segment 2: Assigned (Middle) */}
-                  {item.assigned > 0 && (
-                    <div 
-                      style={{ 
-                        height: `${item.assignedPercent}%`, 
-                        backgroundColor: colors.assigned 
-                      }} 
-                      className="w-full transition-all"
-                    />
-                  )}
-
-                  {/* Status Segment 3: Draft/Pending (Top) */}
-                  {item.draft > 0 && (
-                    <div 
-                      style={{ 
-                        height: `${item.draftPercent}%`, 
-                        backgroundColor: colors.draft 
-                      }} 
-                      className="w-full transition-all"
-                    />
-                  )}
-
-                  {/* 💡 Multi-Status Detailed Hover Tooltip */}
-                  <div className="absolute -top-24 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[9px] font-medium py-2 px-3 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-30 shadow-xl whitespace-nowrap space-y-1">
-                    <p className="font-bold border-b border-slate-700 pb-1 text-slate-300 uppercase">{item.date}</p>
-                    <p className="text-amber-400">Pending: {item.draft}</p>
-                    <p className="text-blue-400">Assigned: {item.assigned}</p>
-                    <p className="text-emerald-400">Completed: {item.completed}</p>
-                    <p className="font-extrabold text-white pt-0.5 border-t border-slate-700">Total: {item.total}</p>
+                  <div className="w-full h-full rounded-xl overflow-hidden flex flex-col-reverse">
+                    {item.completed > 0 && (
+                      <div 
+                        style={{ 
+                          height: `${item.completedPercent}%`, 
+                          backgroundColor: colors.completed 
+                        }} 
+                        className="w-full transition-all"
+                      />
+                    )}
+                    {item.assigned > 0 && (
+                      <div 
+                        style={{ 
+                          height: `${item.assignedPercent}%`, 
+                          backgroundColor: colors.assigned 
+                        }} 
+                        className="w-full transition-all"
+                      />
+                    )}
+                    {item.draft > 0 && (
+                      <div 
+                        style={{ 
+                          height: `${item.draftPercent}%`, 
+                          backgroundColor: colors.draft 
+                        }} 
+                        className="w-full transition-all"
+                      />
+                    )}
                   </div>
                 </div>
 
-                {/* Day Label */}
-                <span className={`text-[9px] font-semibold uppercase shrink-0 ${
-                  item.isToday ? 'text-slate-900 font-extrabold' : 'text-slate-400'
+                {/* Day label */}
+                <span className={`text-[9px] font-semibold uppercase shrink-0 transition-colors ${
+                  item.isToday ? 'text-slate-900 font-extrabold' : 'text-slate-400 group-hover:text-slate-700'
                 }`}>
                   {item.label}
                 </span>
@@ -229,7 +227,7 @@ const Dashboard = ({ requests = [] }) => {
           </div>
         </div>
 
-        {/* RECENT ACTIVITY SECTION */}
+        {/* RECENT ACTIVITY */}
         <div className="bg-white p-8 rounded-[32px] border border-slate-100 shadow-sm">
           <h3 className="font-semibold text-slate-700 mb-8 uppercase text-[11px] tracking-widest">
             Recent Activity
