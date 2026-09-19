@@ -23,7 +23,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // --- DATABASE CONNECTION & AUTOMATIC INDEX RESET LOGIC ---
-mongoose.connect('mongodb://192.168.1.2:27017/mms_db')
+mongoose.connect('mongodb+srv://Admin:Yq6e4e58wxate05j@cluster0.aqmxyev.mongodb.net/Maintance?retryWrites=true&w=majority&appName=Cluster0')
   .then(() => {
     console.log('✅ Connected to MongoDB securely (mms_db)');
     
