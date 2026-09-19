@@ -2,7 +2,7 @@ import axios from 'axios';
 
 const API = axios.create({
   
-  baseURL: 'http://192.168.1.2:5000/api', 
+  baseURL: 'https://mini-fully-system.vercel.app/api', 
 });
 
 // Fetch all maintenance jobs

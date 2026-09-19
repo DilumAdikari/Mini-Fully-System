@@ -23,7 +23,7 @@ const MaintenanceForm = ({ isOpen, onClose, onRefresh }) => {
 
   useEffect(() => {
     if (isOpen) {
-      axios.get('http://192.168.1.2:5000/api/departments')
+      axios.get('https://mini-fully-system.vercel.app/api/departments')
         .then(res => {
           const deps = res.data || [];
           setDepartments(deps);
@@ -65,7 +65,7 @@ const MaintenanceForm = ({ isOpen, onClose, onRefresh }) => {
 
       console.log("🚀 Payload sending to server:", payload);
 
-      await axios.post('http://192.168.1.2:5000/api/requests', payload);
+      await axios.post('https://mini-fully-system.vercel.app/api/requests', payload);
       
       toast.success('Request Submitted Successfully!', { id: t });
       

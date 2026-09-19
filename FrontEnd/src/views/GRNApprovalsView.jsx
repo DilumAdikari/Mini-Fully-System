@@ -17,7 +17,7 @@ const GRNApprovalsView = ({ onRefresh }) => {
     if (!user || !user.uid) return; 
     
     try {
-      const res = await axios.get('http://192.168.1.2:5000/api/grn');
+      const res = await axios.get('https://mini-fully-system.vercel.app/api/grn');
       const allGRNs = Array.isArray(res.data) ? res.data : [];
       
       const filteredForMe = allGRNs.filter(grn => {
@@ -49,7 +49,7 @@ const GRNApprovalsView = ({ onRefresh }) => {
     const t = toast.loading("Processing authorization transaction matrix...");
     
     try {
-      const res = await axios.patch(`http://192.168.1.2:5000/api/grn/review/${grnId}`, {
+      const res = await axios.patch(`https://mini-fully-system.vercel.app/api/grn/review/${grnId}`, {
         action: 'APPROVE',
         userId: user.uid,
         username: user.name
@@ -73,7 +73,7 @@ const GRNApprovalsView = ({ onRefresh }) => {
 
     const t = toast.loading("Rejecting GRN sequence back to draft status...");
     try {
-      const res = await axios.patch(`http://192.168.1.2:5000/api/grn/review/${selectedGRN._id}`, {
+      const res = await axios.patch(`https://mini-fully-system.vercel.app/api/grn/review/${selectedGRN._id}`, {
         action: 'REJECT',
         userId: user.uid,
         username: user.name,

@@ -24,7 +24,7 @@ const LoginView = () => {
     
     try {
       // ✅ CONNECTING TO MONGODB: Requesting the login route in server.js
-      const response = await axios.post('http://192.168.1.2:5000/api/users/login', {
+      const response = await axios.post('https://mini-fully-system.vercel.app/api/users/login', {
         username: credentials.username,
         password: credentials.password
       });

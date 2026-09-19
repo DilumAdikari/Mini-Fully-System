@@ -26,7 +26,7 @@ const ServiceProviderMaster = () => {
 
   const fetchProviders = async () => {
     try {
-      const res = await axios.get('http://192.168.1.2:5000/api/service-providers');
+      const res = await axios.get('https://mini-fully-system.vercel.app/api/service-providers');
       setProviders(res.data || []);
     } catch (err) {
       console.error("Error fetching service providers", err);
@@ -43,7 +43,7 @@ const ServiceProviderMaster = () => {
     const t = toast.loading("Registering Service Provider...");
 
     try {
-      await axios.post('http://192.168.1.2:5000/api/service-providers', formData);
+      await axios.post('https://mini-fully-system.vercel.app/api/service-providers', formData);
       toast.success("Service Provider Registered Successfully!", { id: t });
       setFormData({
         name: '',
@@ -65,7 +65,7 @@ const ServiceProviderMaster = () => {
   const handleDelete = async (id, name) => {
     if (!window.confirm(`Are you sure you want to remove ${name}?`)) return;
     try {
-      await axios.delete(`http://192.168.1.2:5000/api/service-providers/${id}`);
+      await axios.delete(`https://mini-fully-system.vercel.app/api/service-providers/${id}`);
       toast.success("Service Provider removed");
       fetchProviders();
     } catch (err) {

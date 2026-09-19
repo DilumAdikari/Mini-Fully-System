@@ -19,7 +19,7 @@ const SupplierRegister = () => {
 
   const fetchSuppliers = async () => {
     try {
-      const res = await axios.get('http://192.168.1.2:5000/api/suppliers');
+      const res = await axios.get('https://mini-fully-system.vercel.app/api/suppliers');
       setSuppliers(Array.isArray(res.data) ? res.data : []);
     } catch (err) { 
       console.error("Error loading suppliers", err); 
@@ -31,7 +31,7 @@ const SupplierRegister = () => {
     if (!formData.name.trim()) return toast.error("Supplier Name is required");
 
     try {
-      await axios.post('http://192.168.1.2:5000/api/suppliers', formData);
+      await axios.post('https://mini-fully-system.vercel.app/api/suppliers', formData);
       toast.success("Supplier Registered Successfully!");
       setFormData({ name: '', contactPerson: '', phone: '', address: '' });
       fetchSuppliers();
@@ -43,7 +43,7 @@ const SupplierRegister = () => {
   const handleDelete = async (id) => {
     if(!window.confirm("Are you sure you want to delete this supplier?")) return;
     try {
-      await axios.delete(`http://192.168.1.2:5000/api/suppliers/${id}`);
+      await axios.delete(`https://mini-fully-system.vercel.app/api/suppliers/${id}`);
       toast.success("Supplier Deleted");
       fetchSuppliers();
     } catch (err) { 

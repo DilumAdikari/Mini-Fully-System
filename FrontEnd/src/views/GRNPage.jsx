@@ -69,7 +69,7 @@ const GRNPage = ({ onRefresh }) => {
 
   const fetchAllGRNRecords = async () => {
     try {
-      const res = await axios.get('http://192.168.1.2:5000/api/grn');
+      const res = await axios.get('https://mini-fully-system.vercel.app/api/grn');
       setGrnList(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
       console.error("Failed to fetch GRN list:", err);
@@ -78,7 +78,7 @@ const GRNPage = ({ onRefresh }) => {
 
   const fetchRegisteredMaterials = async () => {
     try {
-      const res = await axios.get('http://192.168.1.2:5000/api/materials');
+      const res = await axios.get('https://mini-fully-system.vercel.app/api/materials');
       setDbMaterials(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
       console.error("Failed to fetch registered materials:", err);
@@ -87,7 +87,7 @@ const GRNPage = ({ onRefresh }) => {
 
   const fetchRegisteredSuppliers = async () => {
     try {
-      const res = await axios.get('http://192.168.1.2:5000/api/suppliers');
+      const res = await axios.get('https://mini-fully-system.vercel.app/api/suppliers');
       setSuppliersList(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
       console.error("Failed to fetch registered suppliers:", err);
@@ -97,7 +97,7 @@ const GRNPage = ({ onRefresh }) => {
   // 💡 NEW FETCH LOGIC: අපේ සිස්ටම් එකේ හදපු වර්ක්ෆ්ලෝ ටෙම්ප්ලේට්ස් ලෝඩ් කිරීම
   const fetchActiveWorkflowTemplates = async () => {
     try {
-      const res = await axios.get('http://192.168.1.2:5000/api/workflow/templates');
+      const res = await axios.get('https://mini-fully-system.vercel.app/api/workflow/templates');
       setWorkflowTemplates(Array.isArray(res.data) ? res.data : []);
     } catch (err) {
       console.error("Failed to load workflow matrix:", err);
@@ -106,7 +106,7 @@ const GRNPage = ({ onRefresh }) => {
 
   const generateFrontendInvoiceCode = async () => {
     try {
-      const res = await axios.get('http://192.168.1.2:5000/api/grn/next-invoice');
+      const res = await axios.get('https://mini-fully-system.vercel.app/api/grn/next-invoice');
       if (res.data && res.data.nextInvoice) {
         const customGRNCode = res.data.nextInvoice.replace("INV", "GRN");
         setHeader(prev => ({ ...prev, invoiceCode: customGRNCode }));
@@ -220,7 +220,7 @@ const GRNPage = ({ onRefresh }) => {
     };
 
     try {
-      await axios.post('http://192.168.1.2:5000/api/grn', payload);
+      await axios.post('https://mini-fully-system.vercel.app/api/grn', payload);
       toast.success("GRN Saved & Routed Successfully", { id: t });
       
       setIsCreating(false);

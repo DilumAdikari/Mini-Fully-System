@@ -24,8 +24,8 @@ const TicketReport = () => {
     setLoading(true);
     try {
       const [reqRes, staffRes] = await Promise.all([
-        axios.get('http://192.168.1.2:5000/api/requests'),
-        axios.get('http://192.168.1.2:5000/api/users/staff')
+        axios.get('https://mini-fully-system.vercel.app/api/requests'),
+        axios.get('https://mini-fully-system.vercel.app/api/users/staff')
       ]);
       setRequests(reqRes.data || []);
       setStaffList(staffRes.data || []);

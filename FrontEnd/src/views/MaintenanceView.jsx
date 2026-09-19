@@ -229,11 +229,11 @@ const MaintenanceView = ({ requests = [], onRefresh }) => {
 
   useEffect(() => {
     if (user?.role === 'admin') {
-      axios.get('http://192.168.1.2:5000/api/users/staff')
+      axios.get('https://mini-fully-system.vercel.app/api/users/staff')
         .then(res => setStaffList(res.data || []))
         .catch(err => console.error("Error loading staff", err));
 
-      axios.get('http://192.168.1.2:5000/api/service-providers')
+      axios.get('https://mini-fully-system.vercel.app/api/service-providers')
         .then(res => setServiceProviders(res.data || []))
         .catch(err => console.error("Error loading service providers", err));
     }
@@ -249,7 +249,7 @@ const MaintenanceView = ({ requests = [], onRefresh }) => {
 
   const handleAssign = async (id, assignData) => {
     try {
-      const res = await axios.patch(`http://192.168.1.2:5000/api/requests/assign/${id}`, assignData);
+      const res = await axios.patch(`https://mini-fully-system.vercel.app/api/requests/assign/${id}`, assignData);
       toast.success(
         assignData.assignType === 'EXTERNAL' 
           ? "Assigned to Service Provider Successfully" 
@@ -265,7 +265,7 @@ const MaintenanceView = ({ requests = [], onRefresh }) => {
 
   const handleAdminComplete = async (id) => {
     try {
-      await axios.patch(`http://192.168.1.2:5000/api/requests/admin-complete/${id}`);
+      await axios.patch(`https://mini-fully-system.vercel.app/api/requests/admin-complete/${id}`);
       toast.success("Job Marked as Completed Successfully");
       setSelectedJob(null);
       if (onRefresh) onRefresh();

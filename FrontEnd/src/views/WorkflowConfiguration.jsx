@@ -30,10 +30,10 @@ const WorkflowConfiguration = () => {
   // --- FETCH INITIAL DATA ---
   const fetchData = async () => {
     try {
-      const resUsers = await axios.get('http://192.168.1.2:5000/api/users');
+      const resUsers = await axios.get('https://mini-fully-system.vercel.app/api/users');
       setUsersList(resUsers.data || []);
 
-      const resTemplates = await axios.get('http://192.168.1.2:5000/api/workflow/templates');
+      const resTemplates = await axios.get('https://mini-fully-system.vercel.app/api/workflow/templates');
       setSavedTemplates(resTemplates.data || []);
     } catch (err) {
       console.error(err);
@@ -92,7 +92,7 @@ const WorkflowConfiguration = () => {
     };
 
     try {
-      await axios.post('http://192.168.1.2:5000/api/workflow/templates', payload);
+      await axios.post('https://mini-fully-system.vercel.app/api/workflow/templates', payload);
       toast.success("Workflow Configuration Matrix Saved!", { id: t });
 
       setWorkflowCode('');
@@ -115,7 +115,7 @@ const WorkflowConfiguration = () => {
   const handleDeleteTemplate = async (id) => {
     if (!window.confirm("Are you sure you want to completely purge this workflow template?")) return;
     try {
-      await axios.delete(`http://192.168.1.2:5000/api/workflow/templates/${id}`);
+      await axios.delete(`https://mini-fully-system.vercel.app/api/workflow/templates/${id}`);
       toast.success("Template matrix removed from core configuration");
       fetchData();
     } catch (err) {

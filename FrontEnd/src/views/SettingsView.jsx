@@ -48,7 +48,7 @@ const SettingsView = ({ onRefresh }) => {
 
   const fetchDepartments = async () => {
     try {
-      const res = await axios.get('http://192.168.1.2:5000/api/departments');
+      const res = await axios.get('https://mini-fully-system.vercel.app/api/departments');
       setDepartments(res.data);
     } catch (err) {
       toast.error("Could not load departments");
@@ -62,7 +62,7 @@ const SettingsView = ({ onRefresh }) => {
 
     setIsSubmitting(true);
     try {
-      await axios.post('http://192.168.1.2:5000/api/departments', { name: trimmedDep });
+      await axios.post('https://mini-fully-system.vercel.app/api/departments', { name: trimmedDep });
       setNewDep('');
       toast.success("Department Added");
       fetchDepartments();
@@ -80,7 +80,7 @@ const SettingsView = ({ onRefresh }) => {
 
   const executeDelete = async () => {
     try {
-      await axios.delete(`http://192.168.1.2:5000/api/departments/${modalData.id}`);
+      await axios.delete(`https://mini-fully-system.vercel.app/api/departments/${modalData.id}`);
       toast.success("Department Removed");
       fetchDepartments();
       if (onRefresh) onRefresh();

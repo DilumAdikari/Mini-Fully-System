@@ -92,7 +92,7 @@ const UserManagement = () => {
 
   const fetchUsers = async () => {
     try {
-      const res = await axios.get('http://192.168.1.2:5000/api/users');
+      const res = await axios.get('https://mini-fully-system.vercel.app/api/users');
       setUsers(res.data || []);
     } catch (err) { 
       console.error("Error fetching users", err); 
@@ -101,7 +101,7 @@ const UserManagement = () => {
 
   const fetchDepartments = async () => {
     try {
-      const res = await axios.get('http://192.168.1.2:5000/api/departments');
+      const res = await axios.get('https://mini-fully-system.vercel.app/api/departments');
       setDepartments(res.data || []);
     } catch (err) { 
       console.error("Error fetching departments", err); 
@@ -218,10 +218,10 @@ const UserManagement = () => {
 
     try {
       if (selectedUserId) {
-        await axios.patch(`http://192.168.1.2:5000/api/users/update-permissions/${selectedUserId}`, payload);
+        await axios.patch(`https://mini-fully-system.vercel.app/api/users/update-permissions/${selectedUserId}`, payload);
         toast.success("Security Clearance Matrix updated successfully", { id: t });
       } else {
-        await axios.post('http://192.168.1.2:5000/api/users/register', payload);
+        await axios.post('https://mini-fully-system.vercel.app/api/users/register', payload);
         toast.success("Staff Account & Access Matrix Created Successfully", { id: t });
       }
       
@@ -236,7 +236,7 @@ const UserManagement = () => {
 
   const executeDelete = async () => {
     try {
-      await axios.delete(`http://192.168.1.2:5000/api/users/${modalData.id}`);
+      await axios.delete(`https://mini-fully-system.vercel.app/api/users/${modalData.id}`);
       toast.success("User deleted successfully");
       if (selectedUserId === modalData.id) handleClearFormSelection();
       fetchUsers();
