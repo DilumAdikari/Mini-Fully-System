@@ -914,3 +914,5 @@ const PORT = 5000;
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 MMS Backend running at http://192.168.1.2:${PORT}`);
 });
+
+module.exports = app;
