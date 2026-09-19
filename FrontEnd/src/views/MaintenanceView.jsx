@@ -3,7 +3,7 @@ import axios from 'axios';
 import { useApp } from '../context/AppContext';
 import { 
   X, UserCheck, FileText, CheckCircle2, Search, RotateCcw, 
-  Users, Truck 
+  Users, Truck, ChevronLeft, ChevronRight 
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -26,7 +26,6 @@ const JobDetailsModal = ({ isOpen, onClose, job, staffList, serviceProviders, on
   const currentStatus = job.status;
   const isDraft = currentStatus === 'Assign Pending' || currentStatus === 'DRAFT';
 
-  // 💡 Safe Check: Service Provider ද යන්න හඳුනාගැනීම (assignType හෝ නමේ ඇති bracket මඟින්)
   const isExternalProvider = Boolean(
     job.assignType === 'EXTERNAL' ||
     (job.assignedTo && (job.assignedTo.includes('[') || job.assignedTo.includes('NIC:')))
@@ -82,7 +81,7 @@ const JobDetailsModal = ({ isOpen, onClose, job, staffList, serviceProviders, on
               </div>
             </div>
 
-            {/* 💡 Assigned Personnel Display (Dynamic Badge Fixed) */}
+            {/* Assigned Personnel Display */}
             <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between">
               <div>
                 <label className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Assigned Personnel</label>
@@ -100,7 +99,7 @@ const JobDetailsModal = ({ isOpen, onClose, job, staffList, serviceProviders, on
             </div>
           </div>
 
-          {/* Step 1: Admin Assign Panel with Category Selection */}
+          {/* Admin Assign Panel */}
           {userRole === 'admin' && isDraft && (
             <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-3 mb-5">
               <label className="text-xs font-bold text-slate-700 flex items-center gap-1.5 uppercase">
@@ -134,7 +133,7 @@ const JobDetailsModal = ({ isOpen, onClose, job, staffList, serviceProviders, on
                 </button>
               </div>
 
-              {/* Dynamic Dropdown depending on Selected Channel */}
+              {/* Dynamic Dropdown */}
               {assignCategory === 'INTERNAL' ? (
                 <select
                   className="w-full px-3 py-2.5 bg-white border border-slate-300 text-slate-800 text-xs font-medium rounded-lg outline-none focus:border-slate-500 uppercase cursor-pointer"
@@ -183,7 +182,7 @@ const JobDetailsModal = ({ isOpen, onClose, job, staffList, serviceProviders, on
             </div>
           )}
 
-          {/* Step 2: Job Complete Action */}
+          {/* Job Complete Action */}
           <div>
             {userRole === 'admin' && job.status === 'Assigned' && (
               <button 
@@ -210,7 +209,7 @@ const JobDetailsModal = ({ isOpen, onClose, job, staffList, serviceProviders, on
   );
 };
 
-// --- MAIN VIEW COMPONENT WITH FILTER CONTROLS ---
+// --- MAIN VIEW COMPONENT WITH FILTER & PAGINATION CONTROLS ---
 const MaintenanceView = ({ requests = [], onRefresh }) => {
   const { user } = useApp();
   const [staffList, setStaffList] = useState([]);
@@ -220,9 +219,13 @@ const MaintenanceView = ({ requests = [], onRefresh }) => {
   // 🔍 Filter States
   const [searchTicket, setSearchTicket] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
-  const [channelFilter, setChannelFilter] = useState('ALL'); // 'ALL' | 'INTERNAL' | 'EXTERNAL'
+  const [channelFilter, setChannelFilter] = useState('ALL');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+
+  // 📄 Pagination States
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
 
   useEffect(() => {
     if (user?.role === 'admin') {
@@ -252,8 +255,6 @@ const MaintenanceView = ({ requests = [], onRefresh }) => {
           ? "Assigned to Service Provider Successfully" 
           : "Assigned to Maintenance Staff Successfully"
       );
-      
-      // Update local state if needed or close
       setSelectedJob(res.data || null);
       setSelectedJob(null);
       if (onRefresh) onRefresh();
@@ -279,12 +280,17 @@ const MaintenanceView = ({ requests = [], onRefresh }) => {
     setChannelFilter('ALL');
     setStartDate('');
     setEndDate('');
+    setCurrentPage(1);
   };
 
-  // ⚡ Filtering Operations
+  // Filter zalyanantar pahilya panavar reset karne
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTicket, statusFilter, channelFilter, startDate, endDate]);
+
+  // ⚡ Filtered Requests calculation
   const filteredRequests = useMemo(() => {
     return requests.filter((req) => {
-      // 1. Ticket ID / Title / Description / Assignee Search
       if (searchTicket.trim()) {
         const query = searchTicket.toLowerCase().trim();
         const matchesTid = req.tid?.toLowerCase().includes(query);
@@ -294,7 +300,6 @@ const MaintenanceView = ({ requests = [], onRefresh }) => {
         if (!matchesTid && !matchesDesc && !matchesDept && !matchesAssignee) return false;
       }
 
-      // 2. Status Filtering
       if (statusFilter !== 'ALL') {
         if (statusFilter === 'DRAFT' && req.status !== 'Assign Pending' && req.status !== 'DRAFT') {
           return false;
@@ -303,14 +308,12 @@ const MaintenanceView = ({ requests = [], onRefresh }) => {
         }
       }
 
-      // 3. Channel Filter (Internal Staff vs Service Provider)
       if (channelFilter !== 'ALL') {
         const isExternal = req.assignType === 'EXTERNAL' || (req.assignedTo && req.assignedTo.includes('['));
         if (channelFilter === 'EXTERNAL' && !isExternal) return false;
         if (channelFilter === 'INTERNAL' && isExternal) return false;
       }
 
-      // 4. Date Range Filtering
       if (startDate || endDate) {
         const reqDateStr = req.date || req.createdAt;
         if (!reqDateStr) return false;
@@ -323,6 +326,13 @@ const MaintenanceView = ({ requests = [], onRefresh }) => {
       return true;
     });
   }, [requests, searchTicket, statusFilter, channelFilter, startDate, endDate]);
+
+  // 📄 Paginated Data Slice
+  const totalPages = Math.ceil(filteredRequests.length / rowsPerPage) || 1;
+  const paginatedRequests = useMemo(() => {
+    const startIndex = (currentPage - 1) * rowsPerPage;
+    return filteredRequests.slice(startIndex, startIndex + rowsPerPage);
+  }, [filteredRequests, currentPage, rowsPerPage]);
 
   return (
     <div className="p-4 animate-in fade-in duration-300 font-sans antialiased text-slate-700 tracking-normal bg-white">
@@ -366,7 +376,7 @@ const MaintenanceView = ({ requests = [], onRefresh }) => {
           </select>
         </div>
 
-        {/* 💡 Channel Filter (Staff vs Provider) */}
+        {/* Channel Filter */}
         <div className="w-[140px]">
           <select
             value={channelFilter}
@@ -429,14 +439,14 @@ const MaintenanceView = ({ requests = [], onRefresh }) => {
             </tr>
           </thead>
           <tbody className="text-[11px] font-normal tracking-normal">
-            {filteredRequests.length === 0 ? (
+            {paginatedRequests.length === 0 ? (
               <tr>
                 <td colSpan="8" className="py-8 text-center text-slate-400 font-semibold uppercase tracking-wider text-xs">
                   No matching tickets found
                 </td>
               </tr>
             ) : (
-              filteredRequests.map((req) => {
+              paginatedRequests.map((req) => {
                 const style = rowStyles[req.status] || rowStyles.default;
                 const isExternal = Boolean(
                   req.assignType === 'EXTERNAL' ||
@@ -454,12 +464,10 @@ const MaintenanceView = ({ requests = [], onRefresh }) => {
                     <td className="px-4 py-2 font-semibold uppercase border-r border-slate-200/60">{req.title || req.description}</td>
                     <td className="px-4 py-2 font-semibold uppercase border-r border-slate-200/60">{req.department || '---'}</td>
                     
-                    {/* Assigned Personnel */}
                     <td className="px-4 py-2 font-semibold uppercase border-r border-slate-200/60">
                       {req.assignedTo || 'Unassigned'}
                     </td>
 
-                    {/* 💡 Channel Badge (Staff vs Provider) */}
                     <td className="px-3 py-2 text-center border-r border-slate-200/60">
                       {req.assignedTo ? (
                         <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${
@@ -488,6 +496,56 @@ const MaintenanceView = ({ requests = [], onRefresh }) => {
             )}
           </tbody>
         </table>
+
+        {/* 📄 PAGINATION CONTROLS BAR */}
+        {filteredRequests.length > 0 && (
+          <div className="bg-slate-50 border-t border-slate-200 px-4 py-3 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-600">
+            
+            {/* Rows per page selection */}
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] font-semibold text-slate-500 uppercase">Rows per page:</span>
+              <select
+                value={rowsPerPage}
+                onChange={(e) => {
+                  setRowsPerPage(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="border border-slate-300 rounded-md px-2 py-1 bg-white font-semibold outline-none cursor-pointer text-xs"
+              >
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+              </select>
+
+              <span className="text-[11px] text-slate-400 font-medium ml-2">
+                Showing <b>{(currentPage - 1) * rowsPerPage + 1}</b> - <b>{Math.min(currentPage * rowsPerPage, filteredRequests.length)}</b> of <b>{filteredRequests.length}</b> records
+              </span>
+            </div>
+
+            {/* Previous / Next buttons */}
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                disabled={currentPage === 1}
+                className="px-2.5 py-1.5 border border-slate-300 bg-white rounded-md font-semibold hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors flex items-center gap-1 text-xs"
+              >
+                <ChevronLeft size={14} /> Prev
+              </button>
+              
+              <span className="px-3 py-1 text-slate-700 font-bold text-xs">
+                Page {currentPage} of {totalPages}
+              </span>
+
+              <button
+                onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                disabled={currentPage === totalPages}
+                className="px-2.5 py-1.5 border border-slate-300 bg-white rounded-md font-semibold hover:bg-slate-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors flex items-center gap-1 text-xs"
+              >
+                Next <ChevronRight size={14} />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       <JobDetailsModal 
